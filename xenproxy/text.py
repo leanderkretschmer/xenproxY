@@ -6,6 +6,18 @@ import re
 _CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 
 
+_LINE = re.compile(r"[\r\n\t]+")
+
+
+def scrub_field(value) -> str:
+    """Scrub, and additionally flatten a value that must stay on one line.
+
+    `xe` prints one field per line, so a value carrying a newline can forge
+    the lines that follow it.
+    """
+    return _LINE.sub(" ", scrub(value)).strip()
+
+
 def scrub(value) -> str:
     """Strip control characters from a string bound for the terminal.
 

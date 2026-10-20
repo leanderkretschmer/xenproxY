@@ -6,7 +6,7 @@ import time
 
 from .. import __version__, config, jobs as jobmod, migrate, pve, update
 from ..sshclient import (SSHClient, SSHError, host_key_known,
-                         scan_host_keys, trust_host_keys)
+                         pick_host_key, scan_host_keys, trust_host_keys)
 from ..text import scrub
 from ..theme import RESET, Theme
 from ..xen import XenHost
@@ -574,12 +574,17 @@ class App:
                          th.paint("Compare the fingerprint with the Xen host "
                                   "before accepting - nothing has been sent "
                                   "yet.", "muted"), ""]
+                chosen = pick_host_key(ov["host_key"])
                 for key in ov["host_key"]:
+                    pick = key is chosen
                     body.append(th.paint(
                         f"  {key['type']:<8} {key['bits']:>5} bit  "
-                        f"{key['fingerprint']}", "foreground"))
-                body += ["", R.help_bar(th, [("y", "accept and continue"),
-                                             ("n", "cancel")], inner)]
+                        f"{key['fingerprint']}", "foreground" if pick else "muted",
+                        bold=pick))
+                body += ["", th.paint(
+                    f"Only the {chosen['type']} key is stored.", "muted"), "",
+                    R.help_bar(th, [("y", "accept and continue"),
+                                    ("n", "cancel")], inner)]
                 box = R.panel(th, body, w, title="Confirm the SSH host key",
                               focused=True, token="warning")
                 top = max(0, (rows - len(box)) // 2)
@@ -791,7 +796,9 @@ class App:
         if ov["kind"] == "server":
             if ov.get("host_key"):
                 if k in ("y", "Y"):
-                    trust_host_keys(ov.pop("host_key"))
+                    offered = ov.pop("host_key")
+                    # store only the key that was shown as the one to accept
+                    trust_host_keys([pick_host_key(offered)])
                     self.notify("host key stored", "success")
                     self._test_overlay_server()
                 elif k in ("n", "N", "esc"):

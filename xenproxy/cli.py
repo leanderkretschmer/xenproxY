@@ -9,7 +9,8 @@ import time
 
 from . import __version__, config, jobs as jobmod, migrate, pve, update
 from .sshclient import (KNOWN_HOSTS, HostKeyUnknown, SSHClient,
-                        host_key_known, scan_host_keys, trust_host_keys)
+                        host_key_known, pick_host_key, scan_host_keys,
+                        trust_host_keys)
 from .xen import XenHost
 
 
@@ -56,31 +57,37 @@ def _ensure_host_key(host: str, port: int, args) -> bool:
     keys = scan_host_keys(host, port)
     want = (getattr(args, "host_key_fingerprint", "") or "").strip()
     if want:
-        if any(k["fingerprint"] == want for k in keys):
-            trust_host_keys(keys)
-            print(f"host key {want} matched and stored")
+        # only the key that was actually named gets stored
+        matched = [k for k in keys if k["fingerprint"] == want]
+        if matched:
+            trust_host_keys(matched)
+            print(f"host key {matched[0]['type']} {want} matched and stored")
             return True
         print(f"host key of {host} does not match {want}:", file=sys.stderr)
         for k in keys:
             print(f"  offered {k['type']:<8} {k['fingerprint']}", file=sys.stderr)
         return False
+
+    chosen = pick_host_key(keys)
     print(f"\n{host} is not in {KNOWN_HOSTS} yet. It offers:")
     for k in keys:
-        print(f"  {k['type']:<8} {k['bits']:>5} bit  {k['fingerprint']}")
+        mark = "  <- to be stored" if k is chosen else ""
+        print(f"  {k['type']:<8} {k['bits']:>5} bit  {k['fingerprint']}{mark}")
     if getattr(args, "accept_host_key", False):
-        trust_host_keys(keys)
-        print("accepted (--accept-host-key)")
+        trust_host_keys([chosen])
+        print(f"accepted the {chosen['type']} key (--accept-host-key)")
         return True
     if not sys.stdin.isatty():
         print("refusing to trust it unattended - pass "
               "--host-key-fingerprint or --accept-host-key", file=sys.stderr)
         return False
-    answer = input("Does this match the fingerprint on the Xen host? [y/N] ")
+    answer = input(f"Store the {chosen['type']} key? Compare its fingerprint "
+                   "on the Xen host first. [y/N] ")
     if answer.strip().lower() not in ("y", "yes"):
         print("not stored")
         return False
-    trust_host_keys(keys)
-    print("host key stored")
+    trust_host_keys([chosen])
+    print(f"{chosen['type']} host key stored")
     return True
 
 

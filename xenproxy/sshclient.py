@@ -153,7 +153,27 @@ def scan_host_keys(host: str, port: int = 22, timeout: int = 15) -> list[dict]:
     return out
 
 
+# Strongest first; only one key is ever stored, and ssh then negotiates
+# that algorithm because it is the only one it has an entry for.
+_KEY_PREFERENCE = ("ED25519", "ECDSA", "RSA", "DSA")
+
+
+def pick_host_key(keys: list[dict]) -> dict | None:
+    """The single key an operator should be asked to confirm."""
+    for want in _KEY_PREFERENCE:
+        for k in keys:
+            if k["type"].upper() == want:
+                return k
+    return keys[0] if keys else None
+
+
 def trust_host_keys(keys: list[dict]) -> None:
+    """Store exactly the keys handed in - never the whole scan.
+
+    Confirming one fingerprint says nothing about the others: a man in
+    the middle can relay the genuine key of one type and offer its own
+    for the rest, then insist on that algorithm next time.
+    """
     _ensure_known_hosts()
     existing = ""
     try:

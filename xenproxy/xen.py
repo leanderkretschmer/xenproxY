@@ -12,9 +12,11 @@ import urllib.parse
 import urllib.request
 
 from .sshclient import SSHClient, SSHError
-from .text import scrub
+from .text import scrub, scrub_field
 
 XE = "/opt/xensource/bin/xe"
+
+UUID_RE = re.compile(r"^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$")
 
 
 
@@ -44,12 +46,19 @@ def parse_records(text: str) -> list[dict]:
             if cur and records is not None:
                 last = cur.get("__last__")
                 if last:
-                    cur[last] = scrub((cur[last] + " " + line.strip()).strip())
+                    cur[last] = scrub_field(cur[last] + " " + line.strip())
             continue
-        key, val = scrub(m.group(1)), scrub(m.group(2).strip())
-        if key == "uuid" and "uuid" in cur:
-            records.append(cur)
-            cur = {}
+        key, val = scrub(m.group(1)), scrub_field(m.group(2).strip())
+        # A record only ever starts at a real uuid. Free-text fields such as
+        # name-description may contain newlines, and a crafted one could
+        # otherwise forge a "uuid ( RO): ..." line and open a record under an
+        # identifier of the attacker's choosing.
+        if key == "uuid":
+            if not UUID_RE.match(val):
+                continue
+            if "uuid" in cur:
+                records.append(cur)
+                cur = {}
         cur[key] = val
         cur["__last__"] = key
     if cur.get("uuid"):
@@ -111,13 +120,35 @@ class XenHost:
         return cp.stdout
 
     # -- inventory ---------------------------------------------------
+    def authoritative_vm_uuids(self) -> set:
+        """UUIDs straight from --minimal, which is comma-separated and so
+        cannot be forged through a guest name."""
+        raw = self._xe("vm-list params=uuid --minimal", timeout=60).strip()
+        return {u for u in (x.strip() for x in raw.split(",")) if UUID_RE.match(u)}
+
     def list_vms(self, include_templates: bool = False) -> list[dict]:
+        known = self.authoritative_vm_uuids()
         out = self._xe(
             "vm-list params=uuid,name-label,name-description,power-state,"
             "memory-static-max,VCPUs-max,is-a-snapshot,is-a-template,"
             "is-control-domain,resident-on,tags --multiple", timeout=90)
         vms = []
+        seen: set = set()
         for r in parse_records(out):
+            uuid = r.get("uuid")
+            if uuid not in known:
+                # forged identifier, or a VM that vanished between the two
+                # calls - either way not something to act on
+                continue
+            if uuid in seen:
+                # The same UUID cannot legitimately appear twice. A guest
+                # whose name or description carries a newline can forge the
+                # lines that follow it, so the listing is not trustworthy.
+                raise SSHError(
+                    f"the xe listing contains {uuid} twice - a guest name or "
+                    "description probably contains a newline. Refusing to "
+                    "use this inventory; fix the name on the Xen host.")
+            seen.add(uuid)
             if r.get("is-control-domain") == "true":
                 continue
             if r.get("is-a-snapshot") == "true":
@@ -139,8 +170,10 @@ class XenHost:
 
     def vm_detail(self, uuid: str) -> dict:
         out = self._xe(f"vm-param-list uuid={shlex.quote(uuid)}", timeout=45)
-        recs = parse_records(out)
-        p = recs[0] if recs else {}
+        recs = [r for r in parse_records(out) if r.get("uuid") == uuid]
+        if not recs:
+            raise SSHError(f"no record came back for VM {uuid}")
+        p = recs[0]
         platform = parse_map(p.get("platform", ""))
         detail = {
             "uuid": uuid,
@@ -181,8 +214,10 @@ class XenHost:
 
     def vdi_info(self, vdi: str) -> dict:
         out = self._xe(f"vdi-param-list uuid={shlex.quote(vdi)}", timeout=45)
-        recs = parse_records(out)
-        p = recs[0] if recs else {}
+        recs = [r for r in parse_records(out) if r.get("uuid") == vdi]
+        if not recs:
+            raise SSHError(f"no record came back for VDI {vdi}")
+        p = recs[0]
         sr = p.get("sr-uuid", "")
         return {
             "vdi": vdi,
