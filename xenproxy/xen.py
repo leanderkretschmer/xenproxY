@@ -33,8 +33,18 @@ def valid_mac(value: str) -> str:
     return mac if _MAC.match(mac) else ""
 
 
-def parse_records(text: str) -> list[dict]:
-    """Parse the `key ( RO): value` block format emitted by xe."""
+class TamperedOutput(SSHError):
+    """The xe output cannot be parsed unambiguously."""
+
+
+def parse_records(text: str, *, strict: bool = True) -> list[dict]:
+    """Parse the `key ( RO): value` block format emitted by xe.
+
+    `xe` never prints a key twice inside one record, so a repeat means a
+    free-text field carried a newline and the lines after it are forged.
+    In strict mode that is refused rather than silently resolved, because
+    which of the two values wins would otherwise be up to the attacker.
+    """
     records: list[dict] = []
     cur: dict = {}
     for raw in text.splitlines():
@@ -59,6 +69,11 @@ def parse_records(text: str) -> list[dict]:
             if "uuid" in cur:
                 records.append(cur)
                 cur = {}
+        elif strict and key in cur:
+            raise TamperedOutput(
+                f"the xe output lists {key!r} twice in one record - a guest "
+                "name or description probably contains a newline. Refusing "
+                "to read it; fix the field on the Xen host.")
         cur[key] = val
         cur["__last__"] = key
     if cur.get("uuid"):
@@ -168,12 +183,22 @@ class XenHost:
         vms.sort(key=lambda v: v["name"].lower())
         return vms
 
+    def _one_record(self, out: str, uuid: str, what: str) -> dict:
+        """Exactly one record, for exactly the object that was asked for."""
+        recs = parse_records(out)
+        if len(recs) != 1:
+            raise TamperedOutput(
+                f"{what} {uuid} returned {len(recs)} records instead of one - "
+                "a free-text field probably contains a newline")
+        if recs[0].get("uuid") != uuid:
+            raise TamperedOutput(
+                f"asked for {what} {uuid} but got "
+                f"{recs[0].get('uuid')!r} back")
+        return recs[0]
+
     def vm_detail(self, uuid: str) -> dict:
         out = self._xe(f"vm-param-list uuid={shlex.quote(uuid)}", timeout=45)
-        recs = [r for r in parse_records(out) if r.get("uuid") == uuid]
-        if not recs:
-            raise SSHError(f"no record came back for VM {uuid}")
-        p = recs[0]
+        p = self._one_record(out, uuid, "VM")
         platform = parse_map(p.get("platform", ""))
         detail = {
             "uuid": uuid,
@@ -214,10 +239,7 @@ class XenHost:
 
     def vdi_info(self, vdi: str) -> dict:
         out = self._xe(f"vdi-param-list uuid={shlex.quote(vdi)}", timeout=45)
-        recs = [r for r in parse_records(out) if r.get("uuid") == vdi]
-        if not recs:
-            raise SSHError(f"no record came back for VDI {vdi}")
-        p = recs[0]
+        p = self._one_record(out, vdi, "VDI")
         sr = p.get("sr-uuid", "")
         return {
             "vdi": vdi,
@@ -255,8 +277,9 @@ class XenHost:
             return ""
         if uuid not in self._net_cache:
             try:
-                out = self._xe(f"network-param-list uuid={shlex.quote(uuid)}", timeout=30)
-                self._net_cache[uuid] = (parse_records(out) or [{}])[0]
+                out = self._xe(f"network-param-list uuid={shlex.quote(uuid)}",
+                               timeout=30)
+                self._net_cache[uuid] = self._one_record(out, uuid, "network")
             except SSHError:
                 self._net_cache[uuid] = {}
         return self._net_cache[uuid].get("name-label", "")
