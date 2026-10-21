@@ -1,6 +1,12 @@
 __pycache__/
 *.py[cod]
-*.egg-info/
 .venv/
 build/
 dist/
+*.egg-info/
+
+# Screenshots dropped into the tree while testing; the ones the project
+# actually ships live under docs/ and in the web front end.
+*.png
+!docs/**/*.png
+!xenproxy/web/static/*.png
