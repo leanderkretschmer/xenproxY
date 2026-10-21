@@ -242,7 +242,10 @@ terminal lifted until it is.
 The wordmark itself is a FIGlet face rendered at build time and shipped as
 text, so the runtime carries no font file: the wide one is `X992`, the
 compact one `ANSI Shadow`, both painted as a gradient from `primary` to
-`accent`.
+`accent`. The wide face comes with loose accents and apostrophes that read
+as grit at terminal size rather than as part of a letter; `--drop` takes
+them out, which leaves the shape and the hand-drawn character but about a
+fifth fewer marks on the screen.
 
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and
@@ -386,6 +389,7 @@ drift away from what the tool draws:
 python3 tools/make_screenshots.py            # -> docs/screens/*.svg
 python3 tools/img2art.py docs/logos/proxmox.webp proxmox
 python3 tools/figlet2art.py tools/ANSI-Shadow.flf xenproxY wordmark
+python3 tools/figlet2art.py tools/X992.flf xenproxY wordmark-full --drop "°‘‚¨ª*~^'"
 ```
 
 `tools/ansi2svg.py` turns the renderer's ANSI output into SVG; box-drawing and

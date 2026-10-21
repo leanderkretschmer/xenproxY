@@ -6,6 +6,10 @@ wordmark is rendered once at build time and shipped, so the runtime needs
 neither a font file nor this code.
 
     python3 tools/figlet2art.py X992.flf xenproxY wordmark-full
+
+`--drop` removes characters from the result. The decorative faces carry
+loose accents and apostrophes that read as grit at terminal size rather
+than as part of a letter, and taking them out leaves the shape intact.
 """
 from __future__ import annotations
 
@@ -58,15 +62,26 @@ def main() -> int:
     ap.add_argument("font")
     ap.add_argument("text")
     ap.add_argument("name")
+    ap.add_argument("--drop", default="",
+                    help="characters to blank out of the finished art")
     args = ap.parse_args()
     chars, height = load(args.font)
     art = render(chars, height, args.text)
+    if args.drop:
+        drop = set(args.drop)
+        art = ["".join(" " if c in drop else c for c in line).rstrip()
+               for line in art]
+        while art and not art[0].strip():
+            art.pop(0)
+        while art and not art[-1].strip():
+            art.pop()
     os.makedirs(OUT_DIR, exist_ok=True)
     out = os.path.join(OUT_DIR, f"{args.name}.txt")
     with open(out, "w", encoding="utf-8") as fh:
         fh.write("\n".join(art) + "\n")
+    ink = sum(1 for line in art for c in line if c != " ")
     print(f"  {os.path.basename(out):<22} "
-          f"{max(len(l) for l in art)}x{len(art)}")
+          f"{max(len(l) for l in art)}x{len(art)}  {ink} marks")
     return 0
 
 
