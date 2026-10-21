@@ -28,6 +28,11 @@ BASE_OPTS = [
     "-o", "ConnectTimeout=15",
     "-o", "BatchMode=no",
     "-o", "LogLevel=ERROR",
+    # Without this ssh forwards the local LC_*/LANG, and a host that lacks
+    # that locale answers every command with a setlocale warning that then
+    # shows up inside error messages. C also keeps remote output stable for
+    # the parsers.
+    "-o", "SetEnv=LC_ALL=C LANG=C",
 ]
 # aes128-gcm roughly doubles throughput over the default cipher on a LAN.
 FAST_OPTS = ["-o", "Compression=no", "-c", "aes128-gcm@openssh.com"]

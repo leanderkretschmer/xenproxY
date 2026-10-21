@@ -8,16 +8,19 @@ import sys
 import time
 
 from . import __version__, config, jobs as jobmod, migrate, pve, update
+from .incus import IncusHost
 from .sshclient import (KNOWN_HOSTS, HostKeyUnknown, SSHClient,
                         host_key_known, pick_host_key, scan_host_keys,
                         trust_host_keys)
 from .xen import XenHost
 
+KINDS = {"xen": XenHost, "incus": IncusHost}
+
 
 def _server(cfg: dict, name: str | None) -> dict:
     servers = config.servers(cfg)
     if not servers:
-        sys.exit("no Xen server configured - run `xenproxY` and press 'a'")
+        sys.exit("no source server configured - run `xenproxY` and press 'a'")
     if name:
         srv = config.find_server(cfg, name)
         if not srv:
@@ -28,10 +31,14 @@ def _server(cfg: dict, name: str | None) -> dict:
     return servers[0]
 
 
-def _connect(srv: dict, warn: bool = True) -> XenHost:
+def _connect(srv: dict, warn: bool = True):
+    """Build the adapter the stored server kind asks for."""
     ssh = SSHClient(srv["host"], srv.get("user", "root"),
                     srv.get("password") or None, srv.get("key") or None,
                     int(srv.get("port", 22)))
+    kind = srv.get("kind", "xen")
+    if kind == "incus":
+        return IncusHost(ssh)
     xen = XenHost(ssh, verify_tls=bool(srv.get("verify_tls")),
                   tls_pin=srv.get("tls_pin", ""),
                   insecure_tls=bool(srv.get("insecure_tls")))
@@ -114,21 +121,25 @@ def cmd_servers(args) -> int:
         return 0
     for s in rows:
         auth = "key" if s.get("key") else ("password" if s.get("password") else "-")
-        print(f"{s['name']:<20} {s.get('user', 'root')}@{s['host']}:"
+        print(f"{s['name']:<20} {s.get('kind', 'xen'):<6} "
+              f"{s.get('user', 'root')}@{s['host']}:"
               f"{s.get('port', 22):<6} auth={auth}")
     return 0
 
 
 def cmd_add(args) -> int:
     cfg = config.load()
+    kind = args.kind
     name = args.name or input("name: ").strip()
     host = args.host or input("host: ").strip()
     user = args.user or (input("user [root]: ").strip() or "root")
     if not _ensure_host_key(host, int(args.port), args):
         return 1
     password = _read_password(args)
-    srv = {"name": name, "host": host, "user": user, "password": password,
-           "port": int(args.port), "verify_tls": bool(args.verify_tls),
+    srv = {"name": name, "kind": kind, "host": host, "user": user,
+           "password": password, "port": int(args.port),
+           "key": args.key or "",
+           "verify_tls": bool(args.verify_tls),
            "insecure_tls": bool(args.insecure_tls), "added": time.time()}
     print("checking the connection ...")
     try:
@@ -139,14 +150,15 @@ def cmd_add(args) -> int:
         print(f"failed: {exc}", file=sys.stderr)
         return 1
     print(f"ok - {info['hostname']} ({info['version']})")
-    try:
-        srv["tls_pin"] = _connect(srv, warn=False).fetch_tls_pin()
-        print(f"pinned XAPI certificate {srv['tls_pin'][:16]}...")
-    except Exception as exc:  # noqa: BLE001
-        tail = ("disk exports will run unverified" if srv["insecure_tls"]
-                else "disk exports will refuse to run until this is fixed")
-        print(f"warning: could not pin the XAPI certificate ({exc}); {tail}",
-              file=sys.stderr)
+    if kind == "xen":
+        try:
+            srv["tls_pin"] = _connect(srv, warn=False).fetch_tls_pin()
+            print(f"pinned XAPI certificate {srv['tls_pin'][:16]}...")
+        except Exception as exc:  # noqa: BLE001
+            tail = ("disk exports will run unverified" if srv["insecure_tls"]
+                    else "disk exports will refuse to run until this is fixed")
+            print(f"warning: could not pin the XAPI certificate ({exc}); {tail}",
+                  file=sys.stderr)
     config.upsert_server(cfg, srv)
     config.save(cfg)
     print(f"saved to {config.CONF_FILE}")
@@ -209,7 +221,7 @@ def cmd_show(args) -> int:
     return 0
 
 
-def _resolve(xen: XenHost, needle: str) -> str:
+def _resolve(xen, needle: str) -> str:
     vms = xen.list_vms()
     for v in vms:
         if v["uuid"] == needle:
@@ -233,6 +245,9 @@ def cmd_migrate(args) -> int:
     detail = xen.vm_detail(uuid)
 
     plan = migrate.default_plan(detail, srv["name"])
+    if args.mode not in migrate.modes_for(srv.get("kind", "xen")):
+        sys.exit(f"mode '{args.mode}' is not available for a "
+                 f"{srv.get('kind', 'xen')} source")
     plan["mode"] = args.mode
     plan["storage"] = args.storage or config.setting(cfg, "default_storage", "")
     plan["target_vmid"] = int(args.vmid) if args.vmid else plan["target_vmid"]
@@ -319,18 +334,22 @@ def cmd_update(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="xenproxY",
-        description="Migrate XenServer/XCP-ng guests to Proxmox VE.")
+        description="Migrate XenServer/XCP-ng and Incus guests to Proxmox VE.")
     ap.add_argument("--version", action="version", version=f"xenproxY {__version__}")
     sub = ap.add_subparsers(dest="cmd")
 
-    p = sub.add_parser("servers", help="list configured Xen servers")
+    p = sub.add_parser("servers", help="list configured source servers")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_servers)
 
-    p = sub.add_parser("add", help="add a Xen server")
+    p = sub.add_parser("add", help="add a source server")
     p.add_argument("--name")
+    p.add_argument("--kind", choices=sorted(KINDS), default="xen",
+                   help="xen for XenServer/XCP-ng, incus for an Incus host")
     p.add_argument("--host")
     p.add_argument("--user")
+    p.add_argument("--key", help="path to an SSH private key to use instead "
+                                 "of a password")
     p.add_argument("--host-key-fingerprint",
                    help="expected SSH host key, e.g. SHA256:abc... - compared "
                         "against what the host offers instead of prompting")
@@ -353,7 +372,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--server")
     p.set_defaults(func=cmd_test)
 
-    p = sub.add_parser("list", help="list guests on a Xen server")
+    p = sub.add_parser("list", help="list guests on a source server")
     p.add_argument("--server")
     p.add_argument("--templates", action="store_true")
     p.add_argument("--json", action="store_true")
@@ -366,7 +385,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_show)
 
     p = sub.add_parser("migrate", help="migrate a guest without the TUI")
-    p.add_argument("vm", help="name or UUID on the Xen side")
+    p.add_argument("vm", help="name or UUID on the source side")
     p.add_argument("--server")
     p.add_argument("--mode", choices=list(migrate.MODES), default="offline")
     p.add_argument("--storage")

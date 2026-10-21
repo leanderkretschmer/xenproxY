@@ -1,4 +1,9 @@
-"""Migration engine: XCP-ng guest -> Proxmox VE guest."""
+"""Migration engine: XCP-ng or Incus guest -> Proxmox VE guest.
+
+The source is reached through an adapter - `xen.XenHost` or
+`incus.IncusHost` - and every step below goes through the same handful of
+adapter methods, so neither side knows about the other.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -11,8 +16,9 @@ import time
 from . import pve
 from .jobs import DONE, FAILED, RUNNING, SKIPPED, Job
 from .safeio import SafeRoot, UnsafePath
+from .incus import MODES as INCUS_MODES
 from .sshclient import SSHError
-from .xen import XenHost, valid_mac
+from .xen import valid_mac
 
 CHUNK = 4 << 20
 _BRIDGE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,14}$")
@@ -21,6 +27,14 @@ MODES = {
     "snapshot": "Snapshot the running guest, copy that - no downtime, temporary objects on Xen",
     "live": "Copy the volume while the guest runs - no downtime, no change on Xen, crash-consistent",
 }
+SOURCE_MODES = {"xen": MODES, "incus": INCUS_MODES}
+
+
+def modes_for(kind: str) -> dict:
+    """The copy modes the given source kind can actually deliver."""
+    return SOURCE_MODES.get(kind or "xen", MODES)
+
+
 NET_MODES = {
     "keep": "Reuse MAC and map the Xen network onto a Proxmox bridge",
     "new": "Fresh MAC and a bridge/VLAN you pick",
@@ -28,7 +42,7 @@ NET_MODES = {
 }
 
 STEPS = [
-    ("connect", "Connect to the Xen host"),
+    ("connect", "Connect to the source host"),
     ("preflight", "Pre-flight checks"),
     ("source", "Prepare the source"),
     ("disks", "Copy disks"),
@@ -78,12 +92,11 @@ def default_plan(detail: dict, server: str) -> dict:
 
 
 class Migration:
-    def __init__(self, job: Job, xen: XenHost, plan: dict) -> None:
+    def __init__(self, job: Job, src, plan: dict) -> None:
         self.job = job
-        self.xen = xen
+        self.src = src
         self.plan = plan
         self.detail: dict = {}
-        self.snapshot_uuid = ""
         self.volumes: list[str] = []
         self.created_vmid = 0
 
@@ -135,9 +148,9 @@ class Migration:
     def _connect(self) -> None:
         j = self.job
         j.begin("connect")
-        info = self.xen.probe()
+        info = self.src.probe()
         self.log(f"{info['hostname']} - {info['version']}")
-        self.detail = self.xen.vm_detail(self.plan["vm_uuid"])
+        self.detail = self.src.vm_detail(self.plan["vm_uuid"])
         disks = self.detail.get("disks", [])
         j.bytes_total = sum(d["virtual_size"] for d in disks)
         self.log(f"{self.detail['name']}: {len(disks)} disk(s), "
@@ -174,11 +187,12 @@ class Migration:
         if not self.detail.get("disks"):
             raise RuntimeError("the source guest has no disks attached")
 
-        # The HTTP export needs a password even when SSH uses a key.
-        if not self.xen.ssh.password:
+        # Only the XAPI export needs one; the Incus stream rides the SSH
+        # session that is already authenticated.
+        if getattr(self.src, "needs_password", True) and not self.src.ssh.password:
             raise RuntimeError("no host password stored - the XAPI disk export needs it")
 
-        state = self.xen.power_state(p["vm_uuid"])
+        state = self.src.power_state(p["vm_uuid"])
         self.log(f"source power state: {state}")
         if p["mode"] == "live" and state != "running":
             self.log("live mode on a halted guest behaves like offline", "warning")
@@ -188,49 +202,9 @@ class Migration:
 
     def _source_prep(self) -> None:
         j = self.job
-        p = self.plan
         j.begin("source")
-        mode = p["mode"]
-
-        if mode == "offline":
-            state = self.xen.power_state(p["vm_uuid"])
-            if state == "running":
-                self.log("clean shutdown of the source guest")
-                try:
-                    self.xen.shutdown(p["vm_uuid"], timeout=900)
-                except SSHError as exc:
-                    raise RuntimeError(f"shutdown failed: {exc}") from exc
-                for _ in range(60):
-                    if self.xen.power_state(p["vm_uuid"]) == "halted":
-                        break
-                    time.sleep(2)
-                else:
-                    raise RuntimeError("source guest did not reach halted state")
-                self.log("source guest halted", "success")
-            else:
-                self.log("source guest was already halted")
-            j.finish("source", DONE, "halted")
-
-        elif mode == "snapshot":
-            label = f"xenproxY-{time.strftime('%Y%m%d-%H%M%S')}"
-            self.log(f"creating snapshot {label}")
-            self.snapshot_uuid = self.xen.snapshot(p["vm_uuid"], label)
-            self.log(f"snapshot {self.snapshot_uuid}", "success")
-            snap_disks = self.xen.vm_disks(self.snapshot_uuid)
-            if not snap_disks:
-                raise RuntimeError("the snapshot exposes no disks")
-            by_dev = {d["device"]: d for d in snap_disks}
-            for d in self.detail["disks"]:
-                src = by_dev.get(d["device"])
-                if src:
-                    d["export_vdi"] = src["vdi"]
-            j.finish("source", DONE, label)
-
-        else:  # live
-            self.log("reading the volume while the guest runs - nothing is changed on Xen")
-            self.log("the image is crash-consistent; the guest will replay its journal",
-                     "warning")
-            j.finish("source", DONE, "no change on Xen")
+        note = self.src.prepare(self.plan, self.detail, self.log) or ""
+        j.finish("source", DONE, note)
 
     # -- disk copy ---------------------------------------------------
     def _copy_disks(self) -> None:
@@ -239,25 +213,41 @@ class Migration:
         j.begin("disks")
         for idx, disk in enumerate(self.detail["disks"]):
             self._check_cancel()
-            vdi = disk.get("export_vdi", disk["vdi"])
-            size = disk["virtual_size"]
-            name = f"vm-{p['target_vmid']}-disk-{idx}"
-            j.current_disk = f"{disk['device']} ({human(size)})"
-            self.log(f"allocating {name} on {p['storage']} - {human(size)}")
-            volid = pve.alloc_disk(p["storage"], int(p["target_vmid"]), name, size)
-            self.volumes.append(volid)
-            path = pve.storage_path(volid)
-            disk["volid"] = volid
-            disk["target_path"] = path
-            self._stream(vdi, path, size, disk)
+            j.current_disk = f"{disk['device']} ({human(disk['virtual_size'])})"
+            self.log(f"opening the source stream for {disk['device']}")
+            stream = self.src.open_disk(disk, self.log)
+            try:
+                # The stream knows its own length - a tar header or the VDI
+                # record - and that is what the target volume is sized from,
+                # so a disk the inventory guessed wrong about still lands.
+                size = int(getattr(stream, "size", 0) or disk["virtual_size"])
+                if not size:
+                    raise RuntimeError(
+                        f"the source did not state a size for {disk['device']}")
+                if size != disk["virtual_size"]:
+                    self.log(f"{disk['device']} is {human(size)}, the inventory "
+                             f"said {human(disk['virtual_size'])}")
+                    j.bytes_total += size - disk["virtual_size"]
+                    disk["virtual_size"] = size
+                name = f"vm-{p['target_vmid']}-disk-{idx}"
+                j.current_disk = f"{disk['device']} ({human(size)})"
+                self.log(f"allocating {name} on {p['storage']} - {human(size)}")
+                volid = pve.alloc_disk(p["storage"], int(p["target_vmid"]),
+                                       name, size)
+                self.volumes.append(volid)
+                path = pve.storage_path(volid)
+                disk["volid"] = volid
+                disk["target_path"] = path
+                self._stream(stream, path, size, disk)
+            finally:
+                stream.close()
         j.current_disk = ""
         j.finish("disks", DONE, f"{len(self.detail['disks'])} disk(s) copied")
 
-    def _stream(self, vdi: str, path: str, size: int, disk: dict) -> None:
-        """Pull a raw VDI stream from XAPI straight onto the target volume."""
+    def _stream(self, stream, path: str, size: int, disk: dict) -> None:
+        """Pull the source stream straight onto the target volume."""
         j = self.job
-        self.log(f"streaming VDI {vdi[:8]} -> {os.path.basename(path)}")
-        resp = self.xen.export_raw(vdi, timeout=300)
+        self.log(f"streaming {stream.name} -> {os.path.basename(path)}")
         digest = hashlib.md5()
         fd = os.open(path, os.O_WRONLY)
         start = time.time()
@@ -277,7 +267,7 @@ class Migration:
                 # never accept more than the disk claims to be - a stream that
                 # keeps going would otherwise run off the end of the volume
                 want = min(CHUNK, size - written)
-                n = resp.readinto(view[:want])
+                n = stream.readinto(view[:want])
                 if not n:
                     break
                 chunk = view[:n]
@@ -294,22 +284,20 @@ class Migration:
                     j.rate = written / elapsed
                     last = now
                     j.save(throttle=True)
-            if resp.readinto(memoryview(bytearray(1))):
+            if stream.readinto(memoryview(bytearray(1))):
                 raise RuntimeError(
                     f"the export sent more than the declared {human(size)}")
             os.fsync(fd)
         finally:
             os.close(fd)
-            resp.close()
-            conn = getattr(resp, "xapi_conn", None)
-            if conn is not None:
-                conn.close()
 
         elapsed = max(0.001, time.time() - start)
         self.log(f"{human(written)} in {elapsed:.0f}s ({human(written / elapsed)}/s)")
         if written != size:
+            tail = getattr(stream, "stderr", "") or ""
             raise RuntimeError(
-                f"short transfer: got {human(written)}, expected {human(size)}")
+                f"short transfer: got {human(written)}, expected {human(size)}"
+                + (f" - source said: {tail}" if tail else ""))
         j.bytes_done = base + size
         if self.plan.get("verify"):
             disk["md5"] = digest.hexdigest()
@@ -395,7 +383,8 @@ class Migration:
             "onboot": 1 if p.get("onboot") else 0,
             "tags": "xenproxy",
             "description": (
-                f"Migrated from XenServer/XCP-ng host {self.xen.ssh.host}.\n"
+                f"Migrated from {getattr(self.src, 'label', 'source')} host "
+                f"{self.src.ssh.host}.\n"
                 f"Source guest: {self.detail.get('name')} "
                 f"({self.plan['vm_uuid']})\nMode: {p['mode']}"),
         }
@@ -405,6 +394,17 @@ class Migration:
         pve.create_vm(vmid, opts)
         self.created_vmid = vmid
         self.log(f"created VM {vmid} ({p['target_name']})", "success")
+
+        if opts["bios"] == "ovmf":
+            # OVMF needs somewhere to keep its boot entries. Without an EFI
+            # disk the firmware falls back to \EFI\BOOT\BOOTX64.EFI and a
+            # guest that only installed its own entry never comes up.
+            efi = f"{p['storage']}:1,efitype=4m,pre-enrolled-keys=0"
+            try:
+                pve.set_vm(vmid, {"efidisk0": efi})
+                self.log("added an EFI disk for the UEFI firmware")
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"could not add an EFI disk: {exc}", "warning")
 
         for idx, disk in enumerate(self.detail["disks"]):
             spec = f"{disk['volid']},iothread=1,discard=on,ssd=1"
@@ -443,17 +443,15 @@ class Migration:
     def _cleanup(self, ok: bool) -> None:
         j = self.job
         j.begin("cleanup")
-        if self.snapshot_uuid:
-            try:
-                self.xen.snapshot_destroy(self.snapshot_uuid)
-                self.log("snapshot removed from Xen", "success")
-            except SSHError as exc:
-                self.log(f"could not remove snapshot {self.snapshot_uuid}: {exc}",
-                         "warning")
+        try:
+            self.src.release(ok, self.log)
+        except SSHError as exc:
+            self.log(f"source cleanup problem: {exc}", "warning")
         if ok and self.plan.get("source_restart"):
             try:
-                self.xen.start(self.plan["vm_uuid"])
-                self.log("source guest started again on Xen", "warning")
+                self.src.start(self.plan["vm_uuid"])
+                self.log("source guest started again on the source host",
+                         "warning")
             except SSHError as exc:
                 self.log(f"could not restart the source: {exc}", "warning")
         if not ok and self.created_vmid:
@@ -480,11 +478,11 @@ def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 
 
 def guest_adapt(device: str, log) -> str:
-    """Mount the boot volume and make the guest KVM-ready.
+    """Mount the volume and make the guest KVM-ready.
 
-    Xen PV NICs are called eth0 because they have no PCI path; under KVM a
-    virtio NIC becomes ens18 and a static /etc/network/interfaces stops
-    matching. Pinning net.ifnames=0 keeps the old name.
+    Two things routinely break a guest that has just changed hypervisor:
+    the NIC is renamed, and a UEFI guest loses the firmware boot entry that
+    used to point at its loader. Both are handled here.
     """
     changes: list[str] = []
     _run(["partx", "-u", device], check=False)
@@ -495,32 +493,127 @@ def guest_adapt(device: str, log) -> str:
         raise RuntimeError("no partitions found on the target volume")
 
     os.makedirs(PREP_MNT, exist_ok=True)
-    root = ""
+    root = esp = ""
     for part in parts:
         if _run(["mount", "-o", MOUNT_OPTS, part, PREP_MNT]).returncode != 0:
             continue
         try:
             with SafeRoot(PREP_MNT) as sr:
-                if sr.is_dir("etc") and (sr.is_dir("boot") or sr.is_dir("usr")):
+                if not root and sr.is_dir("etc") and (sr.is_dir("boot")
+                                                      or sr.is_dir("usr")):
                     root = part
-                    break
+                elif not esp and sr.is_dir("EFI"):
+                    esp = part
         except OSError:
             pass
         _run(["umount", PREP_MNT])
+        if root and esp:
+            break
     if not root:
+        _rmdir(PREP_MNT)
         raise RuntimeError("no Linux root filesystem found")
 
     try:
         log(f"root filesystem on {root}")
-        with SafeRoot(PREP_MNT) as sr:
-            changes = _adapt(sr, log)
+        if _run(["mount", "-o", MOUNT_OPTS, root, PREP_MNT]).returncode == 0:
+            try:
+                with SafeRoot(PREP_MNT) as sr:
+                    changes = _adapt(sr, log)
+            finally:
+                _run(["umount", PREP_MNT])
+        if esp:
+            log(f"EFI system partition on {esp}")
+            if _run(["mount", "-o", MOUNT_OPTS, esp, PREP_MNT]).returncode == 0:
+                try:
+                    with SafeRoot(PREP_MNT) as sr:
+                        if _ensure_efi_fallback(sr, log):
+                            changes.append("EFI fallback loader")
+                except (OSError, UnsafePath) as exc:
+                    log(f"could not inspect the EFI partition: {exc}", "warning")
+                finally:
+                    _run(["umount", PREP_MNT])
     finally:
-        _run(["umount", PREP_MNT])
-        try:
-            os.rmdir(PREP_MNT)
-        except OSError:
-            pass
+        _rmdir(PREP_MNT)
     return ", ".join(changes)
+
+
+def _rmdir(path: str) -> None:
+    try:
+        os.rmdir(path)
+    except OSError:
+        pass
+
+
+FALLBACK_DIR = "EFI/BOOT"
+FALLBACK = "EFI/BOOT/BOOTX64.EFI"
+# shim first: it is what a secure-boot guest expects to be entered through,
+# and it chain-loads the loader sitting next to it.
+LOADERS = ("shimx64.efi", "grubx64.efi", "systemd-bootx64.efi", "bootx64.efi")
+
+
+def _ensure_efi_fallback(sr: SafeRoot, log) -> bool:
+    """Make the ESP bootable without a firmware boot entry.
+
+    A UEFI guest boots through an NVRAM entry that names its loader, and
+    that NVRAM stays behind on the source hypervisor - the target gets an
+    empty one. Firmware then falls back to the removable-media path
+    \\EFI\\BOOT\\BOOTX64.EFI, and a guest that never installed one goes
+    looking for a PXE server instead of starting.
+    """
+    try:
+        entries = sr.listdir("EFI")
+    except (OSError, UnsafePath) as exc:
+        log(f"cannot read the EFI directory: {exc}", "warning")
+        return False
+    have = {e.lower(): e for e in entries}
+    if "boot" in have:
+        try:
+            names = {n.lower() for n in sr.listdir(f"EFI/{have['boot']}")}
+        except (OSError, UnsafePath):
+            names = set()
+        if "bootx64.efi" in names:
+            log("the ESP already carries a fallback boot loader")
+            return False
+
+    source = ""
+    for want in LOADERS:
+        for entry in entries:
+            if entry.lower() == "boot":
+                continue
+            try:
+                names = sr.listdir(f"EFI/{entry}")
+            except (OSError, UnsafePath):
+                continue
+            for name in names:
+                if name.lower() == want:
+                    source = f"EFI/{entry}/{name}"
+                    break
+            if source:
+                break
+        if source:
+            break
+    if not source:
+        log("no EFI loader found to copy into the fallback path - the guest "
+            "may not boot without a firmware entry", "warning")
+        return False
+
+    data = sr.read_bytes(source)
+    if not data:
+        log(f"{source} is empty - not copying it", "warning")
+        return False
+    sr.mkdir(FALLBACK_DIR)
+    sr.write_bytes(FALLBACK, data)
+    log(f"copied {source} to {FALLBACK} so the firmware can find it",
+        "success")
+    if source.lower().endswith("shimx64.efi"):
+        # shim looks for its payload beside itself, so grub has to follow
+        vendor = source.rsplit("/", 1)[0]
+        for name in sr.listdir(vendor):
+            if name.lower() in ("grubx64.efi", "mmx64.efi"):
+                sr.write_bytes(f"{FALLBACK_DIR}/{name.lower()}",
+                               sr.read_bytes(f"{vendor}/{name}"))
+                log(f"copied {name} next to it")
+    return True
 
 
 def _adapt(sr: SafeRoot, log) -> list[str]:

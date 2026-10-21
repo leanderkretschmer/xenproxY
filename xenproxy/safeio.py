@@ -121,6 +121,28 @@ class SafeRoot:
         os.close(fd)
         return True
 
+    def read_bytes(self, rel: str, limit: int = 64 << 20) -> bytes:
+        fd = self.open(rel, os.O_RDONLY)
+        with os.fdopen(fd, "rb") as fh:
+            return fh.read(limit)
+
+    def write_bytes(self, rel: str, data: bytes, mode: int = 0o644) -> None:
+        fd = self.open(rel, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+
+    def mkdir(self, rel: str, mode: int = 0o755) -> bool:
+        """Create one directory. Returns False when it is already there."""
+        cur, name, opened = self._descend(rel)
+        try:
+            os.mkdir(name, mode, dir_fd=cur)
+            return True
+        except FileExistsError:
+            return False
+        finally:
+            for fd in reversed(opened):
+                os.close(fd)
+
     def read_text(self, rel: str, limit: int = 4 << 20) -> str:
         fd = self.open(rel, os.O_RDONLY)
         with os.fdopen(fd, "rb") as fh:

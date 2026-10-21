@@ -93,7 +93,42 @@ def parse_map(value: str) -> dict:
     return out
 
 
+class XapiStream:
+    """The disk export, wrapped so every source adapter looks the same.
+
+    Carries its own byte count, which is what the target volume is sized
+    from, and owns the HTTPS connection underneath the response so closing
+    the stream really closes the socket.
+    """
+
+    def __init__(self, resp, conn, size: int) -> None:
+        self.resp = resp
+        self.conn = conn
+        self.size = int(size)
+        self.name = "export_raw_vdi"
+        self.stderr = ""
+
+    def readinto(self, view) -> int:
+        return self.resp.readinto(view)
+
+    def close(self) -> None:
+        try:
+            self.resp.close()
+        except OSError:
+            pass
+        if self.conn is not None:
+            try:
+                self.conn.close()
+            except OSError:
+                pass
+            self.conn = None
+
+
 class XenHost:
+    kind = "xen"
+    needs_password = True       # the XAPI disk export authenticates with it
+    label = "XenServer / XCP-ng"
+
     def __init__(self, ssh: SSHClient, verify_tls: bool = False,
                  tls_pin: str = "", insecure_tls: bool = False) -> None:
         self.ssh = ssh
@@ -101,6 +136,7 @@ class XenHost:
         self.tls_pin = (tls_pin or "").lower()
         self.insecure_tls = bool(insecure_tls)
         self._info: dict | None = None
+        self.snapshot_uuid = ""
 
     # -- connection --------------------------------------------------
     def probe(self) -> dict:
@@ -457,6 +493,74 @@ class XenHost:
             raise SSHError(f"XAPI export refused ({detail})")
         resp.xapi_conn = conn  # keep the connection alive with the stream
         return resp
+
+    # -- source preparation -------------------------------------------
+    def prepare(self, plan: dict, detail: dict, log) -> str:
+        """Put the source into the state the chosen mode promises.
+
+        Returns a short note for the job step; `release` undoes whatever was
+        created here.
+        """
+        import time as _time
+        uuid = plan["vm_uuid"]
+        mode = plan.get("mode", "offline")
+        for d in detail.get("disks", []):
+            d["export_source"] = d["vdi"]
+
+        if mode == "offline":
+            state = self.power_state(uuid)
+            if state == "running":
+                log("clean shutdown of the source guest")
+                self.shutdown(uuid, timeout=900)
+                for _ in range(60):
+                    if self.power_state(uuid) == "halted":
+                        break
+                    _time.sleep(2)
+                else:
+                    raise SSHError("source guest did not reach halted state")
+                log("source guest halted", "success")
+            else:
+                log("source guest was already halted")
+            return "halted"
+
+        if mode == "snapshot":
+            label = f"xenproxY-{_time.strftime('%Y%m%d-%H%M%S')}"
+            log(f"creating snapshot {label}")
+            self.snapshot_uuid = self.snapshot(uuid, label)
+            log(f"snapshot {self.snapshot_uuid}", "success")
+            snap_disks = self.vm_disks(self.snapshot_uuid)
+            if not snap_disks:
+                raise SSHError("the snapshot exposes no disks")
+            by_dev = {d["device"]: d for d in snap_disks}
+            for d in detail.get("disks", []):
+                src = by_dev.get(d["device"])
+                if src:
+                    d["export_source"] = src["vdi"]
+            return label
+
+        log("reading the volume while the guest runs - nothing is changed on Xen")
+        log("the image is crash-consistent; the guest will replay its journal",
+            "warning")
+        return "no change on Xen"
+
+    def release(self, ok: bool, log) -> None:
+        if not self.snapshot_uuid:
+            return
+        try:
+            self.snapshot_destroy(self.snapshot_uuid)
+            log("snapshot removed from Xen", "success")
+        except SSHError as exc:
+            log(f"could not remove snapshot {self.snapshot_uuid}: {exc}",
+                "warning")
+        self.snapshot_uuid = ""
+
+    def open_disk(self, disk: dict, log=None) -> XapiStream:
+        vdi = disk.get("export_source") or disk["vdi"]
+        resp = self.export_raw(vdi, timeout=300)
+        conn = getattr(resp, "xapi_conn", None)
+        stream = XapiStream(resp, conn, disk.get("virtual_size") or 0)
+        stream.name = f"VDI {vdi[:8]}"
+        return stream
 
     def pinned(self) -> bool:
         return bool(self.tls_pin)

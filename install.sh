@@ -19,7 +19,7 @@ warn() { printf '%s\n' "  ${c_warn}!${c_reset} $*"; }
 die()  { printf '%s\n' "  ${c_err}✗${c_reset} $*" >&2; exit 1; }
 
 banner() {
-  printf '\n%s\n' "  ${c_pri}${c_b}xenproxY${c_reset} ${c_dim}- XenServer/XCP-ng to Proxmox VE${c_reset}"
+  printf '\n%s\n' "  ${c_pri}${c_b}xenproxY${c_reset} ${c_dim}- XenServer/XCP-ng and Incus to Proxmox VE${c_reset}"
   printf '%s\n\n' "  ${c_dim}──────────────────────────────────────────────${c_reset}"
 }
 
@@ -100,6 +100,6 @@ printf '\n'
 if [ -f "$CONFDIR/config.json" ]; then
   say "run ${c_b}xenproxY${c_reset} to continue"
 else
-  say "run ${c_b}xenproxY${c_reset} and add your first Xen server"
+  say "run ${c_b}xenproxY${c_reset} and add your first source server"
 fi
 printf '\n'

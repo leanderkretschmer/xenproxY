@@ -1,4 +1,4 @@
-"""xenproxY - migrate XenServer/XCP-ng guests to Proxmox VE."""
+"""xenproxY - migrate XenServer/XCP-ng and Incus guests to Proxmox VE."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __repo__ = "leanderkretschmer/xenproxY"
