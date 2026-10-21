@@ -84,28 +84,70 @@ def patch() -> None:
     pve.version = lambda: "pve-manager/9.2.11"
     config.load = lambda: {
         "servers": [
-            {"name": "xen-node-1", "host": "10.10.0.20", "user": "root",
-             "password": "x", "port": 22, "verify_tls": False,
+            {"name": "xen-node-1", "kind": "xen", "host": "10.10.0.20",
+             "user": "root", "password": "x", "port": 22, "verify_tls": False,
+             "tls_pin": "794d2749ce97dd2a8855f9e9696c0564157f1444a2ea8f85",
              "added": time.time() - 86400 * 9},
-            {"name": "xen-node-2", "host": "10.10.0.21", "user": "root",
-             "password": "x", "port": 22, "verify_tls": False,
+            {"name": "xen-node-2", "kind": "xen", "host": "10.10.0.21",
+             "user": "root", "password": "x", "port": 22, "verify_tls": False,
              "added": time.time() - 86400 * 3},
+            {"name": "incus-01", "kind": "incus", "host": "10.10.0.40",
+             "user": "root", "key": "/etc/xenproxy/keys/incus-01_ed25519",
+             "port": 22, "added": time.time() - 86400},
         ],
         "settings": dict(config.DEFAULTS["settings"], check_updates=False),
     }
     config.save = lambda _c: None
 
 
+INCUS_GUESTS = [
+    ("build-runner", "running", 4 << 30, 4),
+    ("db-replica", "running", 8 << 30, 4),
+    ("gitea", "running", 2 << 30, 2),
+    ("sandbox", "halted", 2 << 30, 2),
+    ("win-test", "running", 8 << 30, 4),
+]
+
+INCUS_DETAIL = {
+    "uuid": "db-replica", "name": "db-replica", "power_state": "running",
+    "memory": 8 << 30, "vcpus": 4, "cores_per_socket": 1,
+    "firmware": "uefi", "hvm": True, "snapshots": ["nightly-20261020"],
+    "extra_disks": [],
+    "disks": [{"device": "root", "virtual_size": 120 << 30, "sr_name": "nvme",
+               "vdi": "db-replica", "sr": "nvme", "label": "root"}],
+    "nics": [{"device": "eth0", "mac": "10:66:6a:22:d8:17", "mtu": 1500,
+              "network": "br0", "network_name": "br0", "vlan": 1051}],
+}
+
+
 def new_app():
     from xenproxy.ui.app import App
     app = App()
-    app.term = type("T", (), {"invalidate": lambda self: None})()
+    app.term = type("T", (), {"invalidate": lambda self: None,
+                              "set_mouse": lambda self, on: None})()
     return app
+
+
+def fill_incus(app) -> None:
+    from xenproxy.ui.app import _guest_hint
+    app.active_server = config.load()["servers"][2]
+    app.src = object()
+    app.screen = "guests"
+    app.nav_index = 1
+    app.guests = [{"uuid": n, "name": n, "power_state": s, "memory": m,
+                   "vcpus": c, "description": "", "template": False,
+                   "tags": "default"}
+                  for n, s, m, c in INCUS_GUESTS]
+    app.guest_list.set_items(
+        [(g["uuid"], g["name"], _guest_hint(g)) for g in app.guests])
+    app.guest_list.cursor = 1
+    app.detail_cache = {"db-replica": INCUS_DETAIL}
+    app.guest_detail = INCUS_DETAIL
 
 
 def fill_guests(app) -> None:
     app.active_server = config.load()["servers"][0]
-    app.xen = object()  # the wizard only needs a non-None handle here
+    app.src = object()  # the wizard only needs a non-None handle here
     app.screen = "guests"
     app.nav_index = 1
     app.guests = [{"uuid": f"uuid-{i}", "name": n, "power_state": s,
@@ -208,9 +250,18 @@ def main() -> int:
     shot("job.svg", app.compose(COLS, ROWS), "xenproxY - migration running")
 
     app = new_app()
-    app.screen = "settings"
-    app.nav_index = 3
+    fill_incus(app)
+    shot("incus.svg", app.compose(COLS, ROWS), "xenproxY - guests on Incus")
+
+    app = new_app()
+    app.goto("settings")
+    app.focus = "form"
     shot("settings.svg", app.compose(COLS, ROWS), "xenproxY - settings")
+
+    app = new_app()
+    app.compose(COLS, ROWS)
+    app.open_help()
+    shot("help.svg", app.compose(COLS, ROWS), "xenproxY - keyboard and mouse")
 
     saved = config.load
     config.load = lambda: {"servers": [],
@@ -219,10 +270,10 @@ def main() -> int:
     app = new_app()
     app.refresh_servers()
     app.open_server_modal(first_run=True)
-    app.overlay["form"].fields[0].widget.value = "xen-node-1"
-    app.overlay["form"].fields[1].widget.value = "10.10.0.20"
-    app.overlay["form"].fields[3].widget.value = "************"
-    app.overlay["form"].focus = 3
+    app.overlay["form"].fields[1].widget.value = "xen-node-1"
+    app.overlay["form"].fields[2].widget.value = "10.10.0.20"
+    app.overlay["form"].fields[4].widget.value = "************"
+    app.overlay["form"].focus = 4
     shot("setup.svg", app.compose(COLS, ROWS), "xenproxY - first run")
     config.load = saved
     return 0

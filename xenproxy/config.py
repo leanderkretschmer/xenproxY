@@ -13,6 +13,7 @@ DEFAULTS = {
     "settings": {
         "theme": "tokyo-night",
         "border": "rounded",
+        "mouse": True,
         "default_storage": "",
         "default_bridge": "",
         "check_updates": True,
