@@ -233,7 +233,9 @@ carries no virtio modules.
 ## Looks
 
 A panel with room to spare carries the mark of whatever it is about — the
-source server's own, or Proxmox where nothing is configured yet.
+source server's own, or Proxmox where nothing is configured yet. Each one
+ships at three sizes and the panel takes the largest that fits, so a
+narrower pane gets a smaller version of the same drawing.
 They are the real logos, sampled into terminal cells: U+2580 splits a cell
 into an upper and a lower half, so two stacked pixels fit in one and come out
 square. Colours are the logo's own, with anything too dark to see on a dark
@@ -262,6 +264,15 @@ with two colours then shows a band of the lower one along its top edge.
 one colour per cell, so nothing depends on a glyph at all. It costs half
 the vertical detail and is the thing to reach for if the marks look
 striped.
+
+Shrinking an illustration to thirty-odd cells turns its gradients into
+confetti — a pixel here and there whose colour matches nothing around it.
+Two things keep that from happening: the palette is set per size in
+`tools/build-art.sh`, few enough that areas come out flat but not so few
+that a brand colour gets averaged away, and any pixel left without a
+single matching neighbour is flattened into whatever surrounds it. Across
+the four marks that took the share of lone pixels from as much as 42% down
+to 17% at worst, and to none at all for the flat ones.
 
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and
@@ -402,11 +413,8 @@ The images above are rendered straight from the real UI code, so they cannot
 drift away from what the tool draws:
 
 ```sh
-python3 tools/make_screenshots.py            # -> docs/screens/*.svg
-python3 tools/img2art.py docs/logos/proxmox.webp proxmox
-python3 tools/img2art.py docs/logos/wordmark.png wordmark \
-    --widths 140,104,80,60,44 --colours 6 --mask
-python3 tools/img2art.py docs/logos/xenproxy-mark.png xenproxy --widths 36,24,16,12
+python3 tools/make_screenshots.py    # -> docs/screens/*.svg
+./tools/build-art.sh                 # -> xenproxy/art/*.art
 ```
 
 `tools/ansi2svg.py` turns the renderer's ANSI output into SVG; box-drawing and

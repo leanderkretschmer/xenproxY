@@ -171,8 +171,49 @@ def quantise(im: Image.Image, colours: int):
     return palette, grid
 
 
+def despeckle(grid, rounds: int = 3):
+    """Let the majority of a pixel's neighbours decide what it is.
+
+    Shrinking a detailed illustration to thirty-odd pixels turns its
+    gradients into confetti: a pixel here and there whose colour matches
+    nothing around it. Flattening those into whatever surrounds them is
+    what the eye does anyway at this size, and it is the difference
+    between a mark and a smudge.
+    """
+    h = len(grid)
+    for _ in range(rounds):
+        changed = 0
+        out = [row[:] for row in grid]
+        for y in range(h):
+            for x in range(len(grid[y])):
+                here = grid[y][x]
+                tally: dict = {}
+                same = 0
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        if dy == dx == 0:
+                            continue
+                        yy, xx = y + dy, x + dx
+                        if 0 <= yy < h and 0 <= xx < len(grid[yy]):
+                            v = grid[yy][xx]
+                            tally[v] = tally.get(v, 0) + 1
+                            if v == here:
+                                same += 1
+                if same > 1 or not tally:
+                    continue
+                best, count = max(tally.items(), key=lambda kv: kv[1])
+                if count >= 5 and best != here:
+                    out[y][x] = best
+                    changed += 1
+        grid = out
+        if not changed:
+            break
+    return grid
+
+
 def render(path: str, name: str, width: int, colours: int,
-           hole_fill=None, seal_radius: int = 12, mask: bool = False) -> str:
+           hole_fill=None, seal_radius: int = 12, mask: bool = False,
+           clean: bool = True) -> str:
     im = Image.open(path).convert("RGBA")
     if hole_fill:
         im, sealed = seal_gaps(im, hole_fill, seal_radius)
@@ -193,6 +234,8 @@ def render(path: str, name: str, width: int, colours: int,
 
     palette, grid = (as_mask(canvas, colours) if mask
                      else quantise(canvas, colours))
+    if clean:
+        grid = despeckle(grid)
     used = sorted({v for row in grid for v in row if v is not None})
     remap = {old: i for i, old in enumerate(used)}
     lines = [f"# {name} {side}x{th // 2} cells"]
@@ -210,6 +253,8 @@ def main() -> int:
     ap.add_argument("name")
     ap.add_argument("--widths", default="16,24,36")
     ap.add_argument("--colours", type=int, default=12)
+    ap.add_argument("--no-clean", action="store_true",
+                    help="keep every stray pixel the downscale produced")
     ap.add_argument("--mask", action="store_true",
                     help="ship coverage only; the colour is applied when the "
                          "art is drawn, so it follows the theme")
@@ -225,7 +270,7 @@ def main() -> int:
     os.makedirs(OUT_DIR, exist_ok=True)
     for w in [int(x) for x in args.widths.split(",")]:
         text = render(args.image, args.name, w, args.colours, hole,
-                      args.seal_radius, args.mask)
+                      args.seal_radius, args.mask, not args.no_clean)
         out = os.path.join(OUT_DIR, f"{args.name}-{w}.art")
         with open(out, "w", encoding="utf-8") as fh:
             fh.write(text)

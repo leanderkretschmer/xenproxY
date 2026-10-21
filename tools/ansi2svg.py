@@ -245,8 +245,10 @@ def render(lines: list[str], *, title: str = "", cols: int | None = None,
             x = PAD_X + col * cw
             if st.bg:
                 rw = sum(_cw(c) for c in text) * cw
-                out.append(f'<rect x="{x:.1f}" y="{top + row * lh:.1f}" '
-                           f'width="{rw:.2f}" height="{lh:.1f}" '
+                y0 = round(top + row * lh)
+                y1 = round(top + (row + 1) * lh)
+                out.append(f'<rect x="{x:.1f}" y="{y0}" '
+                           f'width="{rw:.2f}" height="{y1 - y0}" '
                            f'fill="{st.bg}" shape-rendering="crispEdges"/>')
             if not text.strip():
                 continue
@@ -275,10 +277,11 @@ def render(lines: list[str], *, title: str = "", cols: int | None = None,
                     run_len = j - i
                     # one rectangle per block run - adjacent rects would show
                     # antialiasing seams at fractional coordinates
+                    y0 = round(top + row * lh)
+                    y1 = round(top + (row + 1) * lh)
                     out.append(
-                        f'<rect x="{PAD_X + c * cw:.2f}" '
-                        f'y="{top + row * lh:.2f}" '
-                        f'width="{run_len * cw:.2f}" height="{lh:.2f}" '
+                        f'<rect x="{PAD_X + c * cw:.2f}" y="{y0}" '
+                        f'width="{run_len * cw:.2f}" height="{y1 - y0}" '
                         f'fill="{colour}" opacity="{op}" '
                         f'shape-rendering="crispEdges"/>')
                     c += run_len
@@ -290,10 +293,11 @@ def render(lines: list[str], *, title: str = "", cols: int | None = None,
                     while j < len(chars) and chars[j] == ch:
                         j += 1
                     run_len = j - i
+                    y0 = round(top + row * lh + lh * off)
+                    y1 = round(top + row * lh + lh * (off + 0.5))
                     out.append(
-                        f'<rect x="{PAD_X + c * cw:.2f}" '
-                        f'y="{top + row * lh + lh * off:.2f}" '
-                        f'width="{run_len * cw:.2f}" height="{lh / 2:.2f}" '
+                        f'<rect x="{PAD_X + c * cw:.2f}" y="{y0}" '
+                        f'width="{run_len * cw:.2f}" height="{y1 - y0}" '
                         f'fill="{colour}" shape-rendering="crispEdges"/>')
                     c += run_len
                     i = j
