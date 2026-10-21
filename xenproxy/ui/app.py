@@ -63,10 +63,19 @@ def _short_bytes(n: float) -> str:
     return f"{n:.0f}P"
 
 
-def _guest_hint(g: dict) -> str:
+STATE_TOKEN = {"running": "success", "halted": "muted",
+               "suspended": "warning", "error": "danger"}
+
+
+def _guest_hint(g: dict, th=None) -> str:
     state = {"running": "run", "halted": "off", "suspended": "sus"}.get(
         g.get("power_state", ""), g.get("power_state", "")[:3])
-    return f"{state} {_short_bytes(g.get('memory', 0))} {g.get('vcpus', 0)}c"
+    rest = f" {_short_bytes(g.get('memory', 0))} {g.get('vcpus', 0)}c"
+    if th is None:
+        return state + rest
+    tok = STATE_TOKEN.get(g.get("power_state", ""), "muted")
+    return (th.paint(th.g["dot"] + " " + state, tok, bold=tok == "success")
+            + th.paint(rest, "muted"))
 
 
 class Task:
@@ -120,6 +129,11 @@ class App:
         self.guests: list[dict] = []
         self.guest_detail: dict | None = None
         self.detail_cache: dict = {}
+        # Kept per server, so going back to one you have already opened
+        # costs nothing. Both survive switching screens.
+        self.inventory: dict = {}
+        self.details: dict = {}
+        self.filter_mode = False
 
         self.load_task: Task | None = None
         self.detail_task: Task | None = None
@@ -150,7 +164,9 @@ class App:
     def refresh_servers(self) -> None:
         items = []
         for s in config.servers(self.cfg):
-            hint = f"{s.get('kind', 'xen')}  {s.get('host', '')}"
+            kind = s.get("kind", "xen")
+            hint = (self.th.paint(kind, LOGO_TOKEN.get(kind, "muted"))
+                    + self.th.paint(f"  {s.get('host', '')}", "muted"))
             items.append((s["name"], s["name"], hint))
         self.server_list.set_items(items)
 
@@ -166,21 +182,33 @@ class App:
                        tls_pin=server.get("tls_pin", ""),
                        insecure_tls=bool(server.get("insecure_tls")))
 
+    INVENTORY_TTL = 180.0
+
     def select_server(self, name: str) -> None:
         server = config.find_server(self.cfg, name)
         if not server:
             return
         self.active_server = server
         self.src = self.connect(server)
-        self.guests = []
         self.guest_detail = None
-        self.detail_cache = {}
+        self.detail_cache = self.details.setdefault(name, {})
+        cached = self.inventory.get(name)
+        self.guests = list(cached["guests"]) if cached else []
+        self.show_guests()
         self.goto("guests")
-        self.load_guests()
+        if not cached or time.time() - cached["at"] > self.INVENTORY_TTL:
+            self.load_guests()
 
-    def load_guests(self) -> None:
-        if not self.src:
+    def show_guests(self) -> None:
+        self.guest_list.set_items(
+            [(g["uuid"], g["name"], _guest_hint(g, self.th))
+             for g in self.guests])
+
+    def load_guests(self, force: bool = False) -> None:
+        if not self.src or self.load_task:
             return
+        if force:
+            self.inventory.pop((self.active_server or {}).get("name", ""), None)
         self.load_task = Task(self._load_guests_inner)
 
     def _load_guests_inner(self) -> list[dict]:
@@ -295,9 +323,11 @@ class App:
                 self.notify(self.load_task.error, "danger", 8)
             else:
                 self.guests = self.load_task.result or []
-                self.guest_list.set_items(
-                    [(g["uuid"], g["name"], _guest_hint(g))
-                     for g in self.guests])
+                name = (self.active_server or {}).get("name", "")
+                if name:
+                    self.inventory[name] = {"guests": list(self.guests),
+                                            "at": time.time()}
+                self.show_guests()
             self.load_task = None
         if self.detail_task and self.detail_task.done:
             if self.detail_task.error:
@@ -411,8 +441,9 @@ class App:
         elif action == "gst.migrate":
             self.open_wizard()
         elif action == "gst.refresh":
-            self.detail_cache = {}
-            self.load_guests()
+            self.detail_cache.clear()
+            self.load_guests(force=True)
+            self.notify("re-reading the inventory", "info", 2)
         elif action == "gst.back":
             self.goto("servers")
         elif action == "job.open":
@@ -495,7 +526,7 @@ class App:
         view = min(cols, MAX_W)
         x0 = (cols - view) // 2
         self.wide = view >= 80
-        head = self.header(view)
+        head = self.header(view, rows)
         # measured first so the body knows its height, rendered again below
         # once the screens have had their say about which buttons are live
         bar_h = len(self.action_bar(view))
@@ -523,18 +554,47 @@ class App:
             frame = self.draw_overlay(frame, cols, rows)
         return frame
 
-    def header(self, cols: int) -> list[str]:
+    def header(self, cols: int, rows: int) -> list[str]:
         th = self.th
-        left = th.paint(" xenproxY ", "primary", bold=True)
-        if self.active_server:
-            left += th.paint(f" {th.g['tri_right']} {self.active_server['name']}",
-                             "muted")
+        banner: list[str] = []
+        if config.setting(self.cfg, "banner", True):
+            # the body still needs room to be a body; the name goes above it
+            # only when there is height to spare
+            room = rows - 17
+            if room >= 6:
+                banner = logo.wordmark(th, cols, min(room, 12))
+        if banner:
+            banner = banner + [""]
+        left = th.paint(" xenproxY ", "primary", bold=True) if not banner \
+            else th.paint(" ", "muted")
+        crumbs = self.path()
+        if crumbs:
+            left += R.breadcrumb(th, crumbs, max(10, cols - 24))
         right = th.paint(f"v{__version__} ", "muted")
         if self.update_info:
             right = th.paint(f"update {self.update_info['version']} ",
                              "warning") + right
         gap = max(0, cols - vlen(left) - vlen(right))
-        return [left + " " * gap + right, R.divider(th, cols)]
+        return banner + [left + " " * gap + right, R.divider(th, cols)]
+
+    def path(self) -> list[str]:
+        """Where you are, as a trail - the menu alone does not say which
+        server a guest list belongs to."""
+        here = {"servers": "Servers", "guests": "Guests", "jobs": "Jobs",
+                "settings": "Settings", "wizard": "Guests",
+                "joblog": "Jobs"}.get(self.screen, "")
+        out = []
+        if self.screen in ("guests", "wizard") and self.active_server:
+            out = ["Servers", self.active_server["name"], here]
+        elif self.screen in ("jobs", "joblog"):
+            out = ["Jobs"]
+            if self.screen == "joblog" and self.open_job:
+                out.append(self.open_job.vm_name)
+        elif here:
+            out = [here]
+        if self.screen == "wizard" and self.wizard:
+            out.append(f"Migrate {self.wizard.detail['name']}")
+        return out
 
     def action_bar(self, cols: int, oy: int = 0, register: bool = False,
                    ox: int = 0) -> list[str]:
@@ -568,7 +628,7 @@ class App:
         hints = {
             "nav": [(f"{th.g['up']}{th.g['down']}", "section")],
             "list": [(f"{th.g['up']}{th.g['down']}", "select"),
-                     (th.g["enter"], "open")],
+                     (th.g["enter"], "open"), ("/", "find")],
             "form": [(f"{th.g['up']}{th.g['down']}", "field"),
                      (f"{'←→' if th.uni else '<>'}", "change")],
             "log": [("pgup/pgdn", "scroll")],
@@ -618,6 +678,22 @@ class App:
         }.get(self.screen, self.screen_servers)
         return fn(width, height, ox, oy)
 
+    def current_list(self):
+        return {"servers": self.server_list, "guests": self.guest_list,
+                "jobs": self.job_list}.get(self.screen)
+
+    def filter_row(self, lst, inner: int) -> list[str]:
+        """The search line, shown while typing or while a query is active."""
+        th = self.th
+        if lst is None or not (self.filter_mode or lst.query):
+            return []
+        caret = f"{th.bg('primary')}{th.fg('surface')} {RESET}" \
+            if self.filter_mode else ""
+        hits = th.paint(f"  {len(lst.items)}/{len(lst.all_items)}", "muted")
+        line = (th.paint(" / ", "accent", bold=True)
+                + th.paint(lst.query or "", "foreground") + caret + hits)
+        return [truncate(line, inner), R.divider(th, inner)]
+
     def _hover_for(self, *actions: str):
         return self.hover_arg if self.hover_action in actions else None
 
@@ -628,11 +704,11 @@ class App:
         is only drawn once everything else has been laid out and the space
         left over is enough.
         """
-        w, h = logo.size(name)
-        if not h or room < h or inner < w:
+        width = logo.best(name, inner, room)
+        if not width:
             return []
-        art = logo.render(name, self.th, LOGO_TOKEN.get(name, "primary"),
-                          width=inner)
+        art = logo.render(name, self.th, width, centre=inner)
+        h = len(art)
         top = 1 if room >= h + 2 else 0
         bottom = 1 if room >= h + 1 else 0
         return [""] * top + art + [""] * bottom
@@ -656,9 +732,11 @@ class App:
         left_w = max(26, int(width * 0.42))
         right_w = width - left_w - 1
         self.hit.add(ox, oy, left_w, height, "pane", "list")
-        lst = self.server_list.render(
-            th, left_w - 4, max(3, height - 4), focused=focused, hit=self.hit,
-            origin=(ox + 1, oy + 1), hover=self._hover_for("row"))
+        head = self.filter_row(self.server_list, left_w - 4)
+        lst = head + self.server_list.render(
+            th, left_w - 4, max(3, height - 4 - len(head)), focused=focused,
+            hit=self.hit, origin=(ox + 1, oy + 1 + len(head)),
+            hover=self._hover_for("row"))
         left = R.panel(th, lst, left_w, title="Servers",
                        subtitle=f"{len(config.servers(self.cfg))}",
                        focused=focused, height=height)
@@ -717,22 +795,26 @@ class App:
             mark = self.mark("proxmox", inner, height - 2 - len(body) - 2)
             return R.panel(th, mark + [""] + body, width, title="Guests",
                            height=height)
-        if self.load_task and not self.load_task.done:
+        if self.load_task and not self.load_task.done and not self.guests:
             spin = R.spinner_frame(th, self.tick)
             return R.panel(th, ["", f"  {spin} " + th.paint(
-                "reading the inventory from Xen", "muted")],
+                "reading the inventory", "muted")],
                 width, title="Guests", focused=focused, height=height)
 
         left_w = max(28, int(width * 0.46))
         right_w = width - left_w - 1
         inner_l = left_w - 4
         self.hit.add(ox, oy, left_w, height, "pane", "list")
-        lst = self.guest_list.render(
-            th, inner_l, max(3, height - 4), focused=focused, hit=self.hit,
-            origin=(ox + 1, oy + 1), hover=self._hover_for("row"))
+        head = self.filter_row(self.guest_list, inner_l)
+        lst = head + self.guest_list.render(
+            th, inner_l, max(3, height - 4 - len(head)), focused=focused,
+            hit=self.hit, origin=(ox + 1, oy + 1 + len(head)),
+            hover=self._hover_for("row"))
+        total = len(self.guest_list.all_items)
+        shown = len(self.guest_list.items)
         left = R.panel(th, lst, left_w, title="Guests",
-                       subtitle=str(len(self.guests)), focused=focused,
-                       height=height)
+                       subtitle=f"{shown}/{total}" if shown != total
+                       else str(total), focused=focused, height=height)
 
         uuid = self.guest_list.value
         if uuid and (not self.guest_detail or self.guest_detail.get("uuid") != uuid):
@@ -847,6 +929,7 @@ class App:
         self.job_list.set_items(items)
         if items:
             rows.append(R.divider(th, inner, "history"))
+            rows += self.filter_row(self.job_list, inner)
             rows += self.job_list.render(
                 th, inner, max(3, height - len(rows) - 4), focused=focused,
                 hit=self.hit, origin=(ox + 1, oy + 1 + len(rows)),
@@ -1039,6 +1122,7 @@ class App:
     HELP_KEYS = [
         ("tab / shift-tab", "next pane: menu, content, actions"),
         ("1 2 3 4", "jump straight to a section"),
+        ("/", "find in the list - esc clears it again"),
         ("up / down", "move inside the focused list or form"),
         ("left / right", "change a value, or pick another button"),
         ("enter", "run the highlighted button"),
@@ -1210,6 +1294,11 @@ class App:
                     return
             self.focus_next(1 if k == "tab" else -1)
             return
+        if self.filter_mode:
+            return self.handle_filter(k)
+        if k == "/" and self.focus == "list" and self.current_list() is not None:
+            self.filter_mode = True
+            return
         if not self.typing():
             if k == "?":
                 self.open_help()
@@ -1267,6 +1356,38 @@ class App:
             if b.enabled and b.shortcut == k:
                 self.run_action(b.action)
                 return
+
+    def handle_filter(self, k: str) -> None:
+        """While the search line is open the keyboard belongs to it, except
+        for the keys that move through what it found."""
+        lst = self.current_list()
+        if lst is None:
+            self.filter_mode = False
+            return
+        if k == "esc":
+            self.filter_mode = False
+            if lst.query:
+                lst.set_query("")
+            return
+        if k in ("enter", "tab", "down", "up", "pgup", "pgdn"):
+            self.filter_mode = False
+            if k != "enter":
+                self.handle(k)
+            elif lst.value:
+                self.run_action(self.primary_for(self.screen))
+            return
+        if k == "backspace":
+            lst.set_query(lst.query[:-1])
+            return
+        if k == "ctrl-u":
+            lst.set_query("")
+            return
+        if k == "space":
+            k = " "
+        if len(k) == 1 and k.isprintable():
+            lst.set_query(lst.query + k)
+        if self.screen == "guests":
+            self.guest_detail = self.detail_cache.get(self.guest_list.value)
 
     def handle_settings(self, k: str) -> None:
         if self.focus == "form" and self.settings_form:

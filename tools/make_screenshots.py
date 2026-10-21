@@ -28,7 +28,7 @@ from ansi2svg import render  # noqa: E402
 from xenproxy import config, jobs as jobmod, migrate, pve  # noqa: E402
 
 OUT = os.path.join(ROOT, "docs", "screens")
-COLS, ROWS = 104, 30
+COLS, ROWS = 112, 38
 
 STORAGES = [
     {"name": "nvme-pool", "type": "zfspool", "content": "images",
@@ -129,7 +129,6 @@ def new_app():
 
 
 def fill_incus(app) -> None:
-    from xenproxy.ui.app import _guest_hint
     app.active_server = config.load()["servers"][2]
     app.src = object()
     app.screen = "guests"
@@ -138,8 +137,7 @@ def fill_incus(app) -> None:
                    "vcpus": c, "description": "", "template": False,
                    "tags": "default"}
                   for n, s, m, c in INCUS_GUESTS]
-    app.guest_list.set_items(
-        [(g["uuid"], g["name"], _guest_hint(g)) for g in app.guests])
+    app.show_guests()
     app.guest_list.cursor = 1
     app.detail_cache = {"db-replica": INCUS_DETAIL}
     app.guest_detail = INCUS_DETAIL
@@ -154,9 +152,7 @@ def fill_guests(app) -> None:
                    "memory": m, "vcpus": c, "description": "", "template": False,
                    "tags": ""}
                   for i, (n, s, m, c) in enumerate(GUESTS)]
-    from xenproxy.ui.app import _guest_hint
-    app.guest_list.set_items(
-        [(g["uuid"], g["name"], _guest_hint(g)) for g in app.guests])
+    app.show_guests()
     app.guest_list.cursor = 0
     app.detail_cache = {"uuid-0": DETAIL}
     app.guest_detail = DETAIL

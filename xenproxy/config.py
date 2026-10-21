@@ -14,6 +14,7 @@ DEFAULTS = {
         "theme": "tokyo-night",
         "border": "rounded",
         "mouse": True,
+        "banner": True,
         "default_storage": "",
         "default_bridge": "",
         "check_updates": True,

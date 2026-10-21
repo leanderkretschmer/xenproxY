@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xenproxY</title>
+<style>
+:root{
+  --bg:#1a1b26; --surface:#1f2335; --raised:#24283b; --border:#3b4261;
+  --fg:#c0caf5; --muted:#565f89; --primary:#7aa2f7; --accent:#bb9af7;
+  --success:#9ece6a; --warning:#e0af68; --danger:#f7768e; --info:#7dcfff;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.5 ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,monospace}
+a{color:var(--primary)}
+header{display:flex;align-items:center;gap:18px;padding:14px 20px;
+  border-bottom:1px solid var(--border);background:var(--surface)}
+.word{font-weight:700;font-size:20px;letter-spacing:.5px;
+  background:linear-gradient(90deg,var(--primary),var(--accent));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);font-size:12px}
+nav{display:flex;gap:6px;margin-left:auto}
+nav button{background:var(--raised);color:var(--fg);border:1px solid var(--border);
+  border-radius:var(--radius);padding:6px 14px;cursor:pointer;font:inherit}
+nav button.on{background:var(--primary);color:var(--surface);border-color:var(--primary)}
+main{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px;
+  align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden}
+.card h2{margin:0;padding:10px 14px;font-size:12px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+.card .body{padding:12px 14px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;
+  border-left:3px solid transparent}
+.row:hover{background:var(--raised)}
+.row.on{background:var(--raised);border-left-color:var(--primary)}
+.row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .hint{color:var(--muted);font-size:12px}
+.logo{width:22px;height:22px;object-fit:contain;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+.dot.running{background:var(--success)}
+.dot.halted{background:var(--muted)}
+.dot.suspended{background:var(--warning)}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;
+  border:1px solid var(--border);color:var(--muted)}
+.tag.running{color:var(--success);border-color:var(--success)}
+.tag.xen{color:var(--info);border-color:var(--info)}
+.tag.incus{color:var(--accent);border-color:var(--accent)}
+input,select{background:var(--bg);color:var(--fg);border:1px solid var(--border);
+  border-radius:6px;padding:6px 8px;font:inherit;width:100%}
+label{display:block;margin:8px 0 2px;color:var(--muted);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+button.go{background:var(--primary);color:var(--surface);border:0;
+  border-radius:var(--radius);padding:9px 18px;font:inherit;font-weight:700;
+  cursor:pointer;margin-top:14px}
+button.go:disabled{background:var(--border);color:var(--muted);cursor:default}
+button.ghost{background:none;border:1px solid var(--border);color:var(--fg);
+  border-radius:var(--radius);padding:5px 12px;font:inherit;cursor:pointer}
+.bar{height:8px;background:var(--raised);border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--primary)}
+.log{max-height:260px;overflow:auto;font-size:12px;white-space:pre-wrap}
+.log .warning{color:var(--warning)} .log .danger{color:var(--danger)}
+.log .success{color:var(--success)} .log .info{color:var(--fg)}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.step{font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);
+  color:var(--muted)}
+.step.done{color:var(--success);border-color:var(--success)}
+.step.running{color:var(--primary);border-color:var(--primary)}
+.step.failed{color:var(--danger);border-color:var(--danger)}
+.muted{color:var(--muted)}
+.err{color:var(--danger);padding:10px 14px}
+.search{width:100%;margin-bottom:0;border-radius:0;border:0;
+  border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<header>
+  <span class="word">xenproxY</span>
+  <span class="sub" id="where">loading…</span>
+  <nav>
+    <button data-tab="servers" class="on">Servers</button>
+    <button data-tab="guests">Guests</button>
+    <button data-tab="jobs">Jobs</button>
+  </nav>
+</header>
+<main id="main"></main>
+
+<script>
+const TOKEN = __TOKEN__, VERSION = "__VERSION__";
+const S = {tab:"servers", servers:[], server:null, guests:[], guest:null,
+           detail:null, targets:null, jobs:{live:[],history:[]}, job:null,
+           filter:"", error:""};
+const LOGO = {xen:"/static/xcp-ng.png", incus:"/static/incus.png",
+              proxmox:"/static/proxmox.webp"};
+
+async function api(path, opts){
+  const r = await fetch("/api"+path, Object.assign({headers:{
+    "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json"}}, opts||{}));
+  const body = await r.json().catch(()=>({error:"unreadable answer"}));
+  if(!r.ok) throw new Error(body.error || ("HTTP "+r.status));
+  return body;
+}
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function human(n){
+  n = Number(n)||0;
+  for(const u of ["B","KiB","MiB","GiB","TiB"]){
+    if(Math.abs(n)<1024) return (u==="B"? n.toFixed(0) : n.toFixed(1))+" "+u;
+    n/=1024;
+  }
+  return n.toFixed(1)+" PiB";
+}
+
+function tab(name){ S.tab=name; S.error=""; render();
+  document.querySelectorAll("nav button").forEach(b =>
+    b.classList.toggle("on", b.dataset.tab===name));
+  if(name==="jobs") pollJobs();
+}
+document.querySelector("nav").onclick = e => {
+  if(e.target.dataset.tab) tab(e.target.dataset.tab);
+};
+
+async function boot(){
+  try{
+    const st = await api("/state");
+    S.servers = st.servers;
+    document.getElementById("where").textContent =
+      `v${st.version}  ·  ${st.node}  ·  ${st.pve}`;
+    render();
+  }catch(e){ S.error = e.message; render(); }
+}
+
+async function openServer(name){
+  S.server = name; S.guests = []; S.guest = null; S.detail = null;
+  tab("guests");
+  try{ S.guests = (await api(`/servers/${encodeURIComponent(name)}/guests`)).guests; }
+  catch(e){ S.error = e.message; }
+  render();
+}
+async function reloadGuests(){
+  if(!S.server) return;
+  S.error=""; S.guests=[]; render();
+  try{ S.guests = (await api(
+        `/servers/${encodeURIComponent(S.server)}/guests?refresh=1`)).guests; }
+  catch(e){ S.error = e.message; }
+  render();
+}
+async function openGuest(id){
+  S.guest = id; S.detail = null; render();
+  try{
+    S.detail = await api(
+      `/servers/${encodeURIComponent(S.server)}/guests/${encodeURIComponent(id)}`);
+    if(!S.targets) S.targets = await api("/targets");
+  }catch(e){ S.error = e.message; }
+  render();
+}
+
+async function startMigration(form){
+  const plan = {
+    server:S.server, vm_uuid:S.detail.uuid, vm_name:S.detail.name,
+    mode:form.mode.value, target_vmid:parseInt(form.vmid.value,10),
+    target_name:form.name.value, storage:form.storage.value,
+    cores:parseInt(form.cores.value,10), sockets:1,
+    memory:parseInt(form.memory.value,10),
+    net_mode:form.net.value, bridge:form.bridge.value,
+    vlan:form.vlan.value ? parseInt(form.vlan.value,10) : null,
+    mac:(S.detail.nics[0]||{}).mac || "",
+    bios:S.detail.firmware==="uefi" ? "ovmf" : "seabios",
+    machine:"pc", scsihw:"virtio-scsi-single", cpu:"host",
+    start_after:form.start.checked, guest_prep:form.prep.checked,
+    verify:form.verify.checked, source_restart:false, onboot:false,
+  };
+  try{
+    const job = await api("/migrate", {method:"POST", body:JSON.stringify(plan)});
+    S.job = job.id; tab("jobs");
+  }catch(e){ S.error = e.message; render(); }
+}
+
+let jobTimer = null;
+async function pollJobs(){
+  clearTimeout(jobTimer);
+  try{
+    S.jobs = await api("/jobs");
+    if(S.job){
+      const live = S.jobs.live.find(j => j.id===S.job);
+      if(live) S.jobs.detail = await api("/jobs/"+encodeURIComponent(S.job));
+    }
+  }catch(e){ S.error = e.message; }
+  if(S.tab==="jobs"){ render(); jobTimer = setTimeout(pollJobs, 1000); }
+}
+
+// -- rendering -------------------------------------------------------
+function render(){
+  const m = document.getElementById("main");
+  const err = S.error ? `<div class="card"><div class="err">${esc(S.error)}</div></div>` : "";
+  if(S.tab==="servers") m.innerHTML = err + viewServers();
+  else if(S.tab==="guests") m.innerHTML = err + viewGuests();
+  else m.innerHTML = err + viewJobs();
+  wire();
+}
+
+function viewServers(){
+  const rows = S.servers.map(s => `
+    <div class="row ${s.name===S.server?"on":""}" data-server="${esc(s.name)}">
+      <img class="logo" src="${LOGO[s.kind]||LOGO.proxmox}" alt="">
+      <span class="name">${esc(s.name)}</span>
+      <span class="tag ${esc(s.kind)}">${esc(s.kind)}</span>
+      <span class="hint">${esc(s.host)}</span>
+    </div>`).join("") || `<div class="body muted">no server configured — add one
+      with <code>xenproxY add</code></div>`;
+  const s = S.servers.find(x => x.name===S.server) || S.servers[0];
+  const side = s ? `
+    <div class="card"><h2>${esc(s.name)}</h2><div class="body">
+      <img class="logo" style="width:72px;height:72px;margin-bottom:10px"
+           src="${LOGO[s.kind]||LOGO.proxmox}" alt="">
+      <dl class="kv">
+        <dt>Kind</dt><dd>${esc(s.kind)}</dd>
+        <dt>Host</dt><dd>${esc(s.user)}@${esc(s.host)}:${s.port}</dd>
+        <dt>Auth</dt><dd>${esc(s.auth)}</dd>
+        <dt>Transport</dt><dd>${s.kind==="incus" ? "over the SSH session"
+          : (s.pinned ? "pinned XAPI certificate" : "certificate not pinned")}</dd>
+      </dl>
+      <button class="go" data-open="${esc(s.name)}">Open guests</button>
+    </div></div>` : "";
+  return `<div class="card"><h2>Servers</h2>${rows}</div>${side}`;
+}
+
+function viewGuests(){
+  if(!S.server) return `<div class="card"><div class="body muted">
+      Pick a server first.</div></div>`;
+  const q = S.filter.toLowerCase();
+  const list = S.guests.filter(g => !q || g.name.toLowerCase().includes(q));
+  const rows = list.map(g => `
+    <div class="row ${g.uuid===S.guest?"on":""}" data-guest="${esc(g.uuid)}">
+      <span class="dot ${esc(g.power_state)}"></span>
+      <span class="name">${esc(g.name)}</span>
+      <span class="hint">${human(g.memory)} · ${g.vcpus}c</span>
+    </div>`).join("") || `<div class="body muted">${S.guests.length
+      ? "nothing matches" : "reading the inventory…"}</div>`;
+  const left = `<div class="card"><h2>Guests ${list.length}/${S.guests.length}</h2>
+    <input class="search" id="filter" placeholder="find…" value="${esc(S.filter)}">
+    ${rows}
+    <div class="body"><button class="ghost" id="reload">Reload</button></div></div>`;
+  return left + (S.detail ? viewDetail() :
+    `<div class="card"><div class="body muted">Select a guest.</div></div>`);
+}
+
+function viewDetail(){
+  const d = S.detail, t = S.targets || {storages:[],bridges:[],next_vmid:100};
+  const disks = d.disks.map(x =>
+    `<dt>${esc(x.device)}</dt><dd>${human(x.virtual_size)} · ${esc(x.sr_name)}</dd>`).join("");
+  const nics = d.nics.map(n =>
+    `<dt>${esc(n.device)}</dt><dd>${esc(n.mac)} ${n.vlan?("· VLAN "+n.vlan):""}
+      ${esc(n.network_name||"")}</dd>`).join("");
+  const modes = Object.entries(t.modes||{}).map(([k,v]) =>
+    `<option value="${esc(k)}">${esc(k)} — ${esc(v)}</option>`).join("");
+  const stores = (t.storages||[]).map(s =>
+    `<option value="${esc(s.name)}">${esc(s.name)} (${human(s.avail)} free)</option>`).join("");
+  const bridges = (t.bridges||[]).map(b =>
+    `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join("");
+  const nic = d.nics[0] || {};
+  return `<div class="card"><h2>${esc(d.name)}
+      <span class="tag ${esc(d.power_state)}">${esc(d.power_state)}</span></h2>
+    <div class="body">
+      <dl class="kv">
+        <dt>vCPU</dt><dd>${d.vcpus}</dd>
+        <dt>Memory</dt><dd>${human(d.memory)}</dd>
+        <dt>Firmware</dt><dd>${esc(d.firmware)}</dd>
+        ${disks}${nics}
+      </dl>
+      <h2 style="margin:16px -14px 10px;padding-left:0;border:0">Migrate</h2>
+      <form id="plan">
+        <label>Mode</label><select name="mode">${modes}</select>
+        <div class="grid2">
+          <div><label>VMID</label><input name="vmid" value="${t.next_vmid}"></div>
+          <div><label>Name</label><input name="name"
+            value="${esc(d.name.replace(/[^A-Za-z0-9.-]+/g,"-").slice(0,60))}"></div>
+        </div>
+        <label>Storage</label><select name="storage">${stores}</select>
+        <div class="grid2">
+          <div><label>Cores</label><input name="cores" value="${d.vcpus||2}"></div>
+          <div><label>Memory (MiB)</label><input name="memory"
+            value="${Math.max(512, Math.round((d.memory||1073741824)/1048576))}"></div>
+        </div>
+        <label>Network</label><select name="net">
+          <option value="keep">keep the MAC</option>
+          <option value="new">new MAC</option>
+          <option value="later">attach with the link down</option>
+          <option value="skip">no NIC</option></select>
+        <div class="grid2">
+          <div><label>Bridge</label><select name="bridge">${bridges}</select></div>
+          <div><label>VLAN</label><input name="vlan" value="${nic.vlan||""}"></div>
+        </div>
+        <label><input type="checkbox" name="start" style="width:auto"> start afterwards</label>
+        <label><input type="checkbox" name="prep" checked style="width:auto"> adapt the guest</label>
+        <label><input type="checkbox" name="verify" checked style="width:auto"> verify the written volume</label>
+        <button class="go" type="submit">Start migration</button>
+      </form>
+    </div></div>`;
+}
+
+function viewJobs(){
+  const live = S.jobs.live.map(j => {
+    const steps = j.steps.map(s =>
+      `<span class="step ${esc(s.state)}">${esc(s.title)}</span>`).join("");
+    return `<div class="card"><h2>${esc(j.vm_name)} → ${j.vmid}
+        <span class="tag">${esc(j.state)}</span></h2><div class="body">
+      <div class="steps">${steps}</div>
+      <div class="bar"><i style="width:${(j.progress*100).toFixed(1)}%"></i></div>
+      <p class="muted">${human(j.bytes_done)} / ${human(j.bytes_total)}
+        ${j.rate?("· "+human(j.rate)+"/s"):""} ${esc(j.current_disk||"")}</p>
+      ${j.error?`<p class="err">${esc(j.error)}</p>`:""}
+      <button class="ghost" data-job="${esc(j.id)}">Show log</button>
+      ${j.state==="running"?`<button class="ghost" data-cancel="${esc(j.id)}">Cancel</button>`:""}
+    </div></div>`;
+  }).join("");
+  const det = S.jobs.detail && S.jobs.detail.log ? `<div class="card">
+      <h2>Log ${esc(S.jobs.detail.id)}</h2><div class="body log">${
+      S.jobs.detail.log.map(l =>
+        `<div class="${esc(l.kind)}">${new Date(l.at*1000)
+          .toLocaleTimeString()} ${esc(l.text)}</div>`).join("")}</div></div>` : "";
+  const hist = S.jobs.history.map(h => `<div class="row">
+      <span class="name">${esc(h.vm_name||"")}</span>
+      <span class="hint">→ ${esc(h.vmid)} · ${esc(h.mode)} · ${esc(h.state)}</span>
+    </div>`).join("") || `<div class="body muted">no migrations recorded</div>`;
+  return (live||`<div class="card"><div class="body muted">nothing running</div></div>`)
+    + det + `<div class="card"><h2>History</h2>${hist}</div>`;
+}
+
+function wire(){
+  document.querySelectorAll("[data-server]").forEach(el =>
+    el.onclick = () => openServer(el.dataset.server));
+  document.querySelectorAll("[data-open]").forEach(el =>
+    el.onclick = () => openServer(el.dataset.open));
+  document.querySelectorAll("[data-guest]").forEach(el =>
+    el.onclick = () => openGuest(el.dataset.guest));
+  document.querySelectorAll("[data-job]").forEach(el =>
+    el.onclick = () => { S.job = el.dataset.job; pollJobs(); });
+  document.querySelectorAll("[data-cancel]").forEach(el =>
+    el.onclick = () => api("/jobs/"+encodeURIComponent(el.dataset.cancel)+"/cancel",
+      {method:"POST"}).then(pollJobs).catch(e => {S.error=e.message; render();}));
+  const f = document.getElementById("filter");
+  if(f) f.oninput = () => { S.filter = f.value; const at = f.selectionStart;
+    render(); const g = document.getElementById("filter");
+    if(g){ g.focus(); g.setSelectionRange(at, at); } };
+  const r = document.getElementById("reload");
+  if(r) r.onclick = reloadGuests;
+  const plan = document.getElementById("plan");
+  if(plan) plan.onsubmit = e => { e.preventDefault(); startMigration(plan); };
+}
+boot();
+</script>
+</body>
+</html>

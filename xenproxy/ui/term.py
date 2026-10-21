@@ -89,12 +89,27 @@ def strip_ansi(s: str) -> str:
     return ANSI_RE.sub("", s) if "\x1b" in s else s
 
 
-def vlen(s: str) -> int:
-    """Visible width of a string, ignoring ANSI sequences."""
+@functools.lru_cache(maxsize=8192)
+def _vlen(s: str) -> int:
     plain = strip_ansi(s)
     if plain.isascii():
         return len(plain)       # the common case, without a per-character walk
     return sum(char_width(c) for c in plain)
+
+
+def vlen(s: str) -> int:
+    """Visible width of a string, ignoring ANSI sequences.
+
+    A frame is mostly the same strings as the one before it - borders, the
+    logo, a label that has not changed - and measuring an escape-heavy row
+    means a regex over it. Measuring it once is enough.
+    """
+    return _vlen(s) if len(s) < 512 else _measure(s)
+
+
+def _measure(s: str) -> int:
+    plain = strip_ansi(s)
+    return len(plain) if plain.isascii() else sum(char_width(c) for c in plain)
 
 
 def truncate(s: str, width: int, ellipsis: str = "…") -> str:

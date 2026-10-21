@@ -334,6 +334,20 @@ def cmd_update(args) -> int:
     return cp.returncode
 
 
+def cmd_serve(args) -> int:
+    from .web import auth
+    from .web.server import serve
+    if args.new_token:
+        print("new token: " + auth.reset())
+    return serve(args.host, int(args.port), verbose=args.verbose)
+
+
+def cmd_token(args) -> int:
+    from .web import auth
+    print(auth.reset() if args.new else auth.token())
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="xenproxY",
@@ -410,6 +424,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=20)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_jobs)
+
+    p = sub.add_parser("serve", help="run the web interface")
+    p.add_argument("--host", default="127.0.0.1",
+                   help="address to bind; the default keeps it on this node")
+    p.add_argument("--port", default=8800, type=int)
+    p.add_argument("--new-token", action="store_true",
+                   help="discard the stored token and issue a new one")
+    p.add_argument("--verbose", action="store_true")
+    p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("token", help="print the web interface token")
+    p.add_argument("--new", action="store_true")
+    p.set_defaults(func=cmd_token)
 
     p = sub.add_parser("update", help="check for and install a new version")
     p.add_argument("--check", action="store_true",

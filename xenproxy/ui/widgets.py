@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..theme import RESET, Theme
 from . import render as R
-from .term import pad, truncate, vlen
+from .term import pad, strip_ansi, truncate, vlen
 
 
 def _chip(th: Theme, text: str, state: str) -> str:
@@ -28,24 +28,45 @@ class SelectList:
 
     def __init__(self, items: list[tuple] | None = None, *, cursor: int = 0,
                  pane: str = "list") -> None:
-        self.items: list[tuple] = items or []
+        self.all_items: list[tuple] = items or []
+        self.items: list[tuple] = list(self.all_items)
         self.cursor = cursor
         self.offset = 0
         self.pane = pane
         self.height = 1
+        self.query = ""
 
     def set_items(self, items: list[tuple], keep: bool = True) -> None:
+        self.all_items = items
+        self._apply(keep)
+
+    def set_query(self, query: str) -> None:
+        """Narrow the list to what matches. An inventory of fifty guests is
+        a scroll; a name typed into it is one row."""
+        self.query = query
+        self._apply(True)
+
+    def _apply(self, keep: bool = True) -> None:
         old = self.value if keep and self.items else None
-        self.items = items
+        q = self.query.strip().lower()
+        if q:
+            # the hint may carry colour codes; match on what is readable
+            self.items = [it for it in self.all_items
+                          if q in strip_ansi(str(it[1])).lower()
+                          or q in strip_ansi(str(it[0])).lower()
+                          or (len(it) > 2 and q in strip_ansi(str(it[2])).lower())]
+        else:
+            self.items = list(self.all_items)
         if old is not None:
-            for i, it in enumerate(items):
+            for i, it in enumerate(self.items):
                 if it[0] == old:
                     self.cursor = i
                     break
             else:
-                self.cursor = min(self.cursor, max(0, len(items) - 1))
+                self.cursor = min(self.cursor, max(0, len(self.items) - 1))
         else:
-            self.cursor = min(self.cursor, max(0, len(items) - 1))
+            self.cursor = min(self.cursor, max(0, len(self.items) - 1))
+        self.cursor = max(0, self.cursor)
 
     @property
     def value(self):
