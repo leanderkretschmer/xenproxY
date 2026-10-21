@@ -109,12 +109,14 @@ def _bg(rgb: tuple, th: Theme) -> str:
     return ""
 
 
-def render(name: str, th: Theme, width: int, *, centre: int = 0) -> list[str]:
-    key = (NAMES.get(name, name), width, th.name, th.depth, th.uni, centre)
+def render(name: str, th: Theme, width: int, *, centre: int = 0,
+           solid: bool = False) -> list[str]:
+    key = (NAMES.get(name, name), width, th.name, th.depth, th.uni, centre,
+           solid)
     hit = _rows.get(key)
     if hit is not None:
         return hit
-    out = _render(*key[:5], centre=centre)
+    out = _render(*key[:5], centre=centre, solid=solid)
     if len(_rows) > 64:
         _rows.clear()
     _rows[key] = out
@@ -122,7 +124,7 @@ def render(name: str, th: Theme, width: int, *, centre: int = 0) -> list[str]:
 
 
 def _render(name: str, width: int, theme_name: str, depth: int, uni: bool,
-            *, centre: int) -> list[str]:
+            *, centre: int, solid: bool = False) -> list[str]:
     th = Theme(theme_name)
     art = _load(name, width)
     if not art:
@@ -141,16 +143,26 @@ def _render(name: str, width: int, theme_name: str, depth: int, uni: bool,
         i = DIGITS.find(ch)
         return colours[i] if 0 <= i < len(colours) else None
 
-    return _cells(grid, cols, at, th, uni, depth, centre)
+    return _cells(grid, cols, at, th, uni, depth, centre, solid)
 
 
-def _cells(grid, cols, at, th, uni, depth, centre):
-    """Fold pairs of pixel rows into half-block cells."""
+def _cells(grid, cols, at, th, uni, depth, centre, solid=False):
+    """Fold pairs of pixel rows into half-block cells.
+
+    `solid` gives up the half-block entirely and paints one colour per
+    cell as a background. It costs half the vertical resolution and buys
+    a mark that cannot be striped: some fonts draw U+2580 a few pixels
+    below the top of the cell, and every row of them then shows a band of
+    whatever is behind.
+    """
     out = []
     for cy in range(0, len(grid), 2):
         line = []
         for x in range(cols):
             top, bottom = at(cy, x), at(cy + 1, x)
+            if solid and uni and depth:
+                line.append(_solid_cell(top, bottom, th))
+                continue
             if not uni or depth == 0:
                 line.append(_ascii_cell(top, bottom))
             elif top is None and bottom is None:
@@ -171,6 +183,15 @@ def _cells(grid, cols, at, th, uni, depth, centre):
         out.append("".join(line))
     pad = " " * max(0, (centre - cols) // 2)
     return [pad + l for l in out]
+
+
+def _solid_cell(top, bottom, th) -> str:
+    """One background-filled cell, the mean of the two halves."""
+    halves = [c for c in (top, bottom) if c]
+    if not halves:
+        return " "
+    mix = tuple(sum(c[i] for c in halves) // len(halves) for i in range(3))
+    return _bg(mix, th) + " " + RESET
 
 
 def _ascii_cell(top, bottom) -> str:
@@ -201,24 +222,25 @@ def wordmark_size(width: int, height: int) -> tuple[int, int]:
 
 
 def wordmark(th: Theme, width: int, height: int, *,
-             centre: bool = True) -> list[str]:
+             centre: bool = True, solid: bool = False) -> list[str]:
     """The name, painted as a gradient from primary to accent.
 
     A flat colour over a wide face looks like a wall; the gradient gives it
     a direction without introducing a colour the theme does not have.
     """
-    key = ("word", th.name, th.depth, th.uni, width, height, centre)
+    key = ("word", th.name, th.depth, th.uni, width, height, centre, solid)
     hit = _rows.get(key)
     if hit is not None:
         return hit
-    out = _wordmark(th, width, height, centre)
+    out = _wordmark(th, width, height, centre, solid)
     if len(_rows) > 64:
         _rows.clear()
     _rows[key] = out
     return out
 
 
-def _wordmark(th: Theme, width: int, height: int, centre: bool) -> list[str]:
+def _wordmark(th: Theme, width: int, height: int, centre: bool,
+              solid: bool = False) -> list[str]:
     chosen = 0
     for w in WORDMARK_WIDTHS:
         gw, gh = size("wordmark", w)
@@ -254,32 +276,34 @@ def _wordmark(th: Theme, width: int, height: int, centre: bool) -> list[str]:
         return tuple(int(c * f) for c in steps[min(x, cols - 1)])
 
     return _cells(grid, cols, at, th, th.uni, th.depth,
-                  width if centre else 0)
+                  width if centre else 0, solid)
 
 
 # -- the two together -------------------------------------------------
 MARK_GAP = 3
 
 
-def banner(th: Theme, width: int, height: int) -> list[str]:
+def banner(th: Theme, width: int, height: int, *,
+           solid: bool = False) -> list[str]:
     """The mark beside the name, as one centred block.
 
     The name decides the size - it is the part that has to be read - and
     the mark takes the largest variant that is no taller, so the pair
     keeps its proportions whatever the terminal gives them.
     """
-    key = ("banner", th.name, th.depth, th.uni, width, height)
+    key = ("banner", th.name, th.depth, th.uni, width, height, solid)
     hit = _rows.get(key)
     if hit is not None:
         return hit
-    out = _banner(th, width, height)
+    out = _banner(th, width, height, solid)
     if len(_rows) > 64:
         _rows.clear()
     _rows[key] = out
     return out
 
 
-def _banner(th: Theme, width: int, height: int) -> list[str]:
+def _banner(th: Theme, width: int, height: int,
+            solid: bool = False) -> list[str]:
     # Try the pair at each size before giving up on the mark: a step
     # smaller with both of them beats the name on its own.
     pick = None
@@ -299,16 +323,16 @@ def _banner(th: Theme, width: int, height: int) -> list[str]:
     if not pick and not fallback:
         return []
     if not pick:
-        word = wordmark(th, fallback, height, centre=False)
+        word = wordmark(th, fallback, height, centre=False, solid=solid)
         return [pad("", max(0, (width - fallback) // 2)) + l for l in word]
 
     word_cols, mw, variant = pick
     # ask for exactly that size, or the largest one would come back again
-    word = wordmark(th, word_cols, height, centre=False)
+    word = wordmark(th, word_cols, height, centre=False, solid=solid)
     if not word:
         return []
     ww, wh = vlen(word[0]), len(word)
-    mark = render("xenproxy", th, variant)
+    mark = render("xenproxy", th, variant, solid=solid)
 
     # sit the shorter of the two in the middle of the taller
     top = (wh - len(mark)) // 2

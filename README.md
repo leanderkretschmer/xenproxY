@@ -255,6 +255,14 @@ the font does; a block that falls a pixel short of the cell edge lets the
 terminal show through, and a column of those reads as stripes across the
 mark.
 
+Some fonts set the half block a few pixels below the top of the cell -
+measured at five pixels in a cell of twenty-eight in one of them. A cell
+with two colours then shows a band of the lower one along its top edge.
+**Solid marks** in Settings gives up the half block entirely and paints
+one colour per cell, so nothing depends on a glyph at all. It costs half
+the vertical detail and is the thing to reach for if the marks look
+striped.
+
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and
 `high-contrast`, each with rounded, single, double or plain ASCII borders.
