@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 
-from ..theme import RESET, Theme, _hex_rgb, _rgb_to_256
+from ..theme import BOLD, RESET, Theme, _hex_rgb, _rgb_to_256
 
 ART_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "art")
@@ -243,7 +243,9 @@ def _wordmark(th: Theme, width: int, height: int, centre: bool) -> list[str]:
                    for i in range(3)) for x in range(cols)]
     out = []
     for row in rows:
-        line, last = [], None
+        # bold matters here: the wide face is drawn in sparse punctuation,
+        # and at one pixel a stroke it disappears into the background
+        line, last = [BOLD], None
         for x, ch in enumerate(row):
             if ch == " ":
                 line.append(" ")

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/wordmark.svg" alt="xenproxY" width="760">
+  <img src="docs/wordmark.svg" alt="xenproxY">
 </p>
 
 <p align="center">
@@ -15,6 +15,12 @@ VE** — from a terminal interface that runs on the Proxmox node itself, or from
 a browser. Disks are pulled as one raw stream straight onto the freshly
 allocated volume: no staging file, no intermediate conversion, and the written
 volume is read back and compared before the guest is declared migrated.
+
+![xenproxY on a wide terminal](docs/screens/wide.svg)
+
+The name is drawn above the interface wherever the terminal has room for
+it — the wide face on a wide terminal, a compact one below that, and
+nothing at all when the rows are better spent on the work.
 
 ![Browsing the guests on a Xen host](docs/screens/guests.svg)
 
@@ -232,6 +238,11 @@ They are the real logos, sampled into terminal cells: U+2580 splits a cell
 into an upper and a lower half, so two stacked pixels fit in one and come out
 square. Colours are the logo's own, with anything too dark to see on a dark
 terminal lifted until it is.
+
+The wordmark itself is a FIGlet face rendered at build time and shipped as
+text, so the runtime carries no font file: the wide one is `X992`, the
+compact one `ANSI Shadow`, both painted as a gradient from `primary` to
+`accent`.
 
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and

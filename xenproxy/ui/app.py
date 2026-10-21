@@ -116,6 +116,7 @@ class App:
         self.hover_action = ""
         self.hover_arg = None
         self.wide = True
+        self._banner_rows = 0
 
         self.server_list = SelectList(pane="servers")
         self.guest_list = SelectList(pane="guests")
@@ -526,7 +527,7 @@ class App:
         view = min(cols, MAX_W)
         x0 = (cols - view) // 2
         self.wide = view >= 80
-        head = self.header(view, rows)
+        head = self.header(view, rows, cols)
         # measured first so the body knows its height, rendered again below
         # once the screens have had their say about which buttons are live
         bar_h = len(self.action_bar(view))
@@ -549,22 +550,30 @@ class App:
         frame = head + body + bar_rows + foot
         if x0:
             pad_left = " " * x0
-            frame = [pad_left + line if line else line for line in frame]
+            frame = [line if i < self._banner_rows
+                     else (pad_left + line if line else line)
+                     for i, line in enumerate(frame)]
         if self.overlay:
             frame = self.draw_overlay(frame, cols, rows)
         return frame
 
-    def header(self, cols: int, rows: int) -> list[str]:
+    def header(self, cols: int, rows: int, full: int = 0) -> list[str]:
         th = self.th
         banner: list[str] = []
         if config.setting(self.cfg, "banner", True):
             # the body still needs room to be a body; the name goes above it
-            # only when there is height to spare
+            # only when there is height to spare. It may use the whole
+            # terminal, unlike the panels below it - a centred wordmark is
+            # not harder to read for being wide, and the wide face is the
+            # one worth showing when there is room for it.
             room = rows - 17
             if room >= 6:
-                banner = logo.wordmark(th, cols, min(room, 12))
+                banner = logo.wordmark(th, max(full, cols), min(room, 12))
         if banner:
             banner = banner + [""]
+        # the banner is already centred across the whole terminal, so it
+        # must not be shifted again by the indent the panels below it get
+        self._banner_rows = len(banner)
         left = th.paint(" xenproxY ", "primary", bold=True) if not banner \
             else th.paint(" ", "muted")
         crumbs = self.path()
