@@ -11,19 +11,19 @@ cd "$(dirname "$0")/.."
 
 art() { python3 tools/img2art.py "docs/logos/$1" "$2" --widths "$3" --colours "$4"; }
 
-art proxmox.webp proxmox 36 4
-art proxmox.webp proxmox 24 3
-art proxmox.webp proxmox 16 3
+# The counts are the number of inks the logo is actually drawn with, read
+# off the full-size image. A flat mark needs exactly its own colours; the
+# illustration needs enough to keep the rocket apart from the sky, and the
+# despeckle pass clears up what is left.
+art proxmox.webp proxmox 36,24,16 2
 
-art xcp-ng.png   xcp-ng  36 7
-art xcp-ng.png   xcp-ng  24 6
-art xcp-ng.png   xcp-ng  16 5
+art xcp-ng.png   xcp-ng  36 8
+art xcp-ng.png   xcp-ng  24 7
+art xcp-ng.png   xcp-ng  16 6
 
-art incus.png    incus   36 6
-art incus.png    incus   24 7
-art incus.png    incus   16 6
+art incus.png    incus   36,24,16 5
 
-art xenproxy-mark.png xenproxy 36,24,16,12 5
+art xenproxy-mark.png xenproxy 36,24,16,12 2
 
 # The name is coverage only; its colour comes from the theme at draw time.
 python3 tools/img2art.py docs/logos/wordmark.png wordmark \

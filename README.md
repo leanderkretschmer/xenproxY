@@ -267,12 +267,14 @@ striped.
 
 Shrinking an illustration to thirty-odd cells turns its gradients into
 confetti — a pixel here and there whose colour matches nothing around it.
-Two things keep that from happening: the palette is set per size in
-`tools/build-art.sh`, few enough that areas come out flat but not so few
-that a brand colour gets averaged away, and any pixel left without a
-single matching neighbour is flattened into whatever surrounds it. Across
-the four marks that took the share of lone pixels from as much as 42% down
-to 17% at worst, and to none at all for the flat ones.
+Two things keep that from happening. The palette is read off the
+*full-size* image, where a flat logo still has its own flat colours -
+Incus is five inks, Proxmox two - rather than off the shrunk one, where
+every edge has turned into a blend and a palette of those makes the orange
+brick-coloured. And any pixel left without a single matching neighbour is
+flattened into whatever surrounds it, which is what the eye does at this
+size anyway. Across the four marks that took the share of lone pixels from
+as much as 42% down to none for the flat ones.
 
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and

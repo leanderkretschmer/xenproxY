@@ -156,6 +156,57 @@ def as_mask(im: Image.Image, levels: int):
     return palette, grid
 
 
+def source_palette(im: Image.Image, colours: int, merge: int = 44):
+    """The colours the logo is actually drawn in.
+
+    Taken from the full-size image, where a flat logo still has its five
+    flat colours. Reading them off the shrunk one instead picks up the
+    blends along every edge, and a palette of those turns Incus orange
+    into brick and its greys into beige.
+    """
+    counts: dict = {}
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if a > 200:
+                counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
+    chosen: list = []
+    for col, _n in ranked:
+        if len(chosen) >= colours:
+            break
+        # near-duplicates are the same ink with a different anti-alias
+        if all(sum((col[i] - c[i]) ** 2 for i in range(3)) > merge * merge
+               for c in chosen):
+            chosen.append(col)
+    return chosen or [(255, 255, 255)]
+
+
+def map_to(im: Image.Image, palette):
+    """Nearest palette entry per pixel, with transparency kept apart."""
+    alpha = im.getchannel("A").load()
+    px = im.load()
+    cache: dict = {}
+    grid = []
+    for y in range(im.height):
+        row = []
+        for x in range(im.width):
+            if alpha[x, y] < ALPHA_FLOOR:
+                row.append(None)
+                continue
+            c = px[x, y][:3]
+            hit = cache.get(c)
+            if hit is None:
+                hit = min(range(len(palette)),
+                          key=lambda i: sum((c[j] - palette[i][j]) ** 2
+                                            for j in range(3)))
+                cache[c] = hit
+            row.append(hit)
+        grid.append(row)
+    return grid
+
+
 def quantise(im: Image.Image, colours: int):
     """(palette, index grid) with transparent pixels marked as None."""
     rgb = Image.new("RGB", im.size, (0, 0, 0))
@@ -213,8 +264,9 @@ def despeckle(grid, rounds: int = 3):
 
 def render(path: str, name: str, width: int, colours: int,
            hole_fill=None, seal_radius: int = 12, mask: bool = False,
-           clean: bool = True) -> str:
+           clean: bool = True, adaptive: bool = False) -> str:
     im = Image.open(path).convert("RGBA")
+    original = im
     if hole_fill:
         im, sealed = seal_gaps(im, hole_fill, seal_radius)
         if sealed:
@@ -232,10 +284,16 @@ def render(path: str, name: str, width: int, colours: int,
     canvas = Image.new("RGBA", (side, th), (0, 0, 0, 0))
     canvas.paste(im, ((side - tw) // 2, 0))
 
-    palette, grid = (as_mask(canvas, colours) if mask
-                     else quantise(canvas, colours))
+    if mask:
+        palette, grid = as_mask(canvas, colours)
+    elif adaptive:
+        palette, grid = quantise(canvas, colours)
+    else:
+        palette = source_palette(original, colours)
+        grid = map_to(canvas, palette)
     if clean:
         grid = despeckle(grid)
+    palette = list(palette)
     used = sorted({v for row in grid for v in row if v is not None})
     remap = {old: i for i, old in enumerate(used)}
     lines = [f"# {name} {side}x{th // 2} cells"]
@@ -253,6 +311,9 @@ def main() -> int:
     ap.add_argument("name")
     ap.add_argument("--widths", default="16,24,36")
     ap.add_argument("--colours", type=int, default=12)
+    ap.add_argument("--adaptive", action="store_true",
+                    help="let the quantiser pick colours from the shrunk "
+                         "image instead of reading them off the original")
     ap.add_argument("--no-clean", action="store_true",
                     help="keep every stray pixel the downscale produced")
     ap.add_argument("--mask", action="store_true",
@@ -270,7 +331,8 @@ def main() -> int:
     os.makedirs(OUT_DIR, exist_ok=True)
     for w in [int(x) for x in args.widths.split(",")]:
         text = render(args.image, args.name, w, args.colours, hole,
-                      args.seal_radius, args.mask, not args.no_clean)
+                      args.seal_radius, args.mask, not args.no_clean,
+                      args.adaptive)
         out = os.path.join(OUT_DIR, f"{args.name}-{w}.art")
         with open(out, "w", encoding="utf-8") as fh:
             fh.write(text)
