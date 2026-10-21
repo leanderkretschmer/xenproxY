@@ -77,6 +77,14 @@ button.ghost{background:none;border:1px solid var(--border);color:var(--fg);
 .err{color:var(--danger);padding:10px 14px}
 .search{width:100%;margin-bottom:0;border-radius:0;border:0;
   border-bottom:1px solid var(--border)}
+/* a host with fifty guests must not turn the page into a mile of list */
+.scroll{max-height:calc(100vh - 230px);overflow:auto}
+.crumb{padding:8px 14px;color:var(--muted);font-size:12px;
+  border-bottom:1px solid var(--border)}
+.crumb b{color:var(--fg);font-weight:600}
+main{align-items:start}
+.card{position:sticky;top:0}
+@media(max-width:900px){.card{position:static}}
 </style>
 </head>
 <body>
@@ -117,10 +125,28 @@ function human(n){
   return n.toFixed(1)+" PiB";
 }
 
-function tab(name){ S.tab=name; S.error=""; render();
+// The address bar says where you are, so a view can be bookmarked, shared
+// or reloaded without losing it.
+function writeHash(){
+  let h = S.tab;
+  if(S.tab==="guests" && S.server){
+    h = "guests/"+encodeURIComponent(S.server);
+    if(S.guest) h += "/"+encodeURIComponent(S.guest);
+  }
+  if(location.hash.slice(1) !== h) history.replaceState(null, "", "#"+h);
+}
+function tab(name){ S.tab=name; S.error=""; writeHash(); render();
   document.querySelectorAll("nav button").forEach(b =>
     b.classList.toggle("on", b.dataset.tab===name));
   if(name==="jobs") pollJobs();
+}
+async function fromHash(){
+  const parts = decodeURIComponent(location.hash.slice(1)).split("/");
+  if(parts[0]==="guests" && parts[1]){
+    await openServer(parts[1]);
+    if(parts[2]) await openGuest(parts[2]);
+  } else if(parts[0]==="jobs"){ tab("jobs"); }
+  else { tab("servers"); }
 }
 document.querySelector("nav").onclick = e => {
   if(e.target.dataset.tab) tab(e.target.dataset.tab);
@@ -132,13 +158,14 @@ async function boot(){
     S.servers = st.servers;
     document.getElementById("where").textContent =
       `v${st.version}  ·  ${st.node}  ·  ${st.pve}`;
-    render();
+    await fromHash();
   }catch(e){ S.error = e.message; render(); }
 }
 
 async function openServer(name){
   S.server = name; S.guests = []; S.guest = null; S.detail = null;
   tab("guests");
+  writeHash();
   try{ S.guests = (await api(`/servers/${encodeURIComponent(name)}/guests`)).guests; }
   catch(e){ S.error = e.message; }
   render();
@@ -152,13 +179,13 @@ async function reloadGuests(){
   render();
 }
 async function openGuest(id){
-  S.guest = id; S.detail = null; render();
+  S.guest = id; S.detail = null; writeHash(); render();
   try{
     S.detail = await api(
       `/servers/${encodeURIComponent(S.server)}/guests/${encodeURIComponent(id)}`);
     if(!S.targets) S.targets = await api("/targets");
   }catch(e){ S.error = e.message; }
-  render();
+  writeHash(); render();
 }
 
 async function startMigration(form){
@@ -244,8 +271,9 @@ function viewGuests(){
     </div>`).join("") || `<div class="body muted">${S.guests.length
       ? "nothing matches" : "reading the inventory…"}</div>`;
   const left = `<div class="card"><h2>Guests ${list.length}/${S.guests.length}</h2>
+    <div class="crumb"><b>${esc(S.server)}</b> · guests</div>
     <input class="search" id="filter" placeholder="find…" value="${esc(S.filter)}">
-    ${rows}
+    <div class="scroll">${rows}</div>
     <div class="body"><button class="ghost" id="reload">Reload</button></div></div>`;
   return left + (S.detail ? viewDetail() :
     `<div class="card"><div class="body muted">Select a guest.</div></div>`);
@@ -354,6 +382,7 @@ function wire(){
   const plan = document.getElementById("plan");
   if(plan) plan.onsubmit = e => { e.preventDefault(); startMigration(plan); };
 }
+window.addEventListener("hashchange", fromHash);
 boot();
 </script>
 </body>

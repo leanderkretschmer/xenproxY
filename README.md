@@ -124,6 +124,8 @@ xenproxY token                      # print the token again
 xenproxY token --new                # issue a new one
 ```
 
+![The web interface: a guest and its migration plan](docs/screens/web-guest.png)
+
 The URL it prints carries a token. That token is generated on first use and
 kept at `/etc/xenproxy/web-token`, mode `0600`, beside the rest of the
 configuration.
@@ -142,6 +144,11 @@ can create and delete virtual machines:
 
 There is no TLS. Binding to anything but loopback prints a warning and should
 mean a reverse proxy in front.
+
+Every view has an address of its own, so a guest or a running migration can be
+bookmarked, reloaded or sent to somebody else.
+
+![A migration running, in the browser](docs/screens/web-jobs.png)
 
 ## Sources
 

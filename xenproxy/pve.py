@@ -180,8 +180,15 @@ def bridges() -> list[dict]:
     return cached("bridges", STORAGE_TTL, _bridges)
 
 
+# Proxmox creates one of these per firewalled NIC at run time. They are
+# bridges as far as the kernel is concerned, but attaching a guest to one
+# by name is never what anybody means.
+RUNTIME_BRIDGE = re.compile(r"^(fwbr|fwln|fwpr|tap|veth|vnet)")
+
+
 def _bridges() -> list[dict]:
     out = []
+    declared = set()
     vlan_aware = set()
     cur = None
     try:
@@ -190,6 +197,7 @@ def _bridges() -> list[dict]:
                 m = re.match(r"^iface\s+(\S+)", line)
                 if m:
                     cur = m.group(1)
+                    declared.add(cur)
                 if cur and re.match(r"^\s+bridge-vlan-aware\s+yes", line):
                     vlan_aware.add(cur)
     except OSError:
@@ -201,6 +209,8 @@ def _bridges() -> list[dict]:
             if not f:
                 continue
             name = f[0].split("@")[0]
+            if RUNTIME_BRIDGE.match(name) and name not in declared:
+                continue
             out.append({"name": name, "state": f[1] if len(f) > 1 else "",
                         "vlan_aware": name in vlan_aware})
     except Exception:

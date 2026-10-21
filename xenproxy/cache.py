@@ -1,9 +1,14 @@
 """A small time-to-live store.
 
-Both front ends ask the same expensive questions - what guests does this
-host have, what does this one look like - and neither should pay for the
-answer twice. Entries are kept per key with their own lifetime, and a
-refresh can be asked for explicitly after something that changes them.
+Asking a source host what it has takes a second or more, and the web
+front end is asked that question again on every page load. Entries are
+kept per key with their own lifetime, and a refresh can be asked for
+explicitly after something that changes them.
+
+The terminal interface keeps its own equivalent inside the running
+application object - a different process, so there is nothing to share -
+but follows the same rule: show what is known, ask again only when the
+answer has gone stale.
 """
 from __future__ import annotations
 
