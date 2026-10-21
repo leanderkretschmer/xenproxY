@@ -33,6 +33,7 @@ LEVELS = (0.0, 0.34, 0.55, 0.78, 1.0)
 NAMES = {"xen": "xcp-ng", "incus": "incus", "proxmox": "proxmox"}
 
 _cache: dict = {}
+_rendered: dict = {}
 
 
 def _rows(name: str) -> list[str]:
@@ -91,7 +92,24 @@ def _shade_bg(th: Theme, token: str, level: int) -> str:
 
 def render(name: str, th: Theme, token: str = "primary", *,
            width: int = 0) -> list[str]:
-    """The mark as terminal rows, centred in `width` when one is given."""
+    """The mark as terminal rows, centred in `width` when one is given.
+
+    Four hundred cells of escape sequences is not much, but it is the same
+    four hundred on every frame, so the finished rows are kept.
+    """
+    key = (name, token, th.name, th.depth, th.uni, width)
+    hit = _rendered.get(key)
+    if hit is not None:
+        return hit
+    out = _render(name, th, token, width=width)
+    if len(_rendered) > 64:         # a theme switch makes new entries
+        _rendered.clear()
+    _rendered[key] = out
+    return out
+
+
+def _render(name: str, th: Theme, token: str = "primary", *,
+            width: int = 0) -> list[str]:
     rows = _rows(NAMES.get(name, name))
     if not rows:
         return []

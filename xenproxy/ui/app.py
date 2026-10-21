@@ -123,6 +123,7 @@ class App:
 
         self.load_task: Task | None = None
         self.detail_task: Task | None = None
+        self.detail_wanted: tuple = ("", 0.0)
         self.probe_task: Task | None = None
         self.update_task: Task | None = None
         self.update_info: dict | None = None
@@ -189,10 +190,32 @@ class App:
     def source_kind(self) -> str:
         return (self.active_server or {}).get("kind", "xen")
 
+    # Each lookup is a round trip to the source host, so holding an arrow
+    # key down must not fire one per row it passes over.
+    DETAIL_DELAY = 0.25
+
     def load_detail(self, uuid: str) -> None:
-        if not self.src or uuid in self.detail_cache:
-            self.guest_detail = self.detail_cache.get(uuid)
+        if not self.src or not uuid:
             return
+        if uuid in self.detail_cache:
+            self.guest_detail = self.detail_cache[uuid]
+            self.detail_wanted = ("", 0.0)
+            return
+        if self.detail_wanted[0] != uuid:
+            # re-arming on every frame would push the deadline forever
+            self.detail_wanted = (uuid, time.time() + self.DETAIL_DELAY)
+
+    def poll_detail(self) -> None:
+        """Start the lookup once the selection has settled."""
+        uuid, due = self.detail_wanted
+        if not uuid or self.detail_task:
+            return
+        if uuid != self.guest_list.value:
+            self.detail_wanted = ("", 0.0)
+            return
+        if time.time() < due:
+            return
+        self.detail_wanted = ("", 0.0)
         self.detail_task = Task(self.src.vm_detail, uuid)
 
     # -- focus --------------------------------------------------------
@@ -256,7 +279,7 @@ class App:
         if any(j.state == jobmod.RUNNING for j in self.live_jobs):
             return 0.12
         if (self.load_task or self.detail_task or self.probe_task
-                or self.update_task):
+                or self.update_task or self.detail_wanted[0]):
             return 0.12
         if self.overlay and self.overlay.get("testing"):
             return 0.12
@@ -266,6 +289,7 @@ class App:
 
     def poll(self) -> None:
         self.poll_overlay()
+        self.poll_detail()
         if self.load_task and self.load_task.done:
             if self.load_task.error:
                 self.notify(self.load_task.error, "danger", 8)
