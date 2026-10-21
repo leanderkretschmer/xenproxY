@@ -15,7 +15,6 @@ DEFAULTS = {
         "border": "rounded",
         "mouse": True,
         "banner": True,
-        "solid_marks": False,
         "ambient": True,
         "default_storage": "",
         "default_bridge": "",

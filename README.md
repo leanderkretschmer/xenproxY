@@ -234,36 +234,34 @@ carries no virtio modules.
 
 A panel with room to spare carries the mark of whatever it is about — the
 source server's own, or Proxmox where nothing is configured yet. Each one
-ships at three sizes and the panel takes the largest that fits, so a
+ships at four sizes and the panel takes the largest that fits, so a
 narrower pane gets a smaller version of the same drawing.
-They are the real logos, sampled into terminal cells: U+2580 splits a cell
-into an upper and a lower half, so two stacked pixels fit in one and come out
-square. Colours are the logo's own, with anything too dark to see on a dark
-terminal lifted until it is.
+
+A mark is made of cells, not of glyphs. Every cell of it is a background
+colour under a space; nothing is drawn with a character, so there is no
+character for a font to set a few pixels low, fall a pixel short of the
+cell edge or leave a seam between rows. What the terminal shows is the
+grid, exactly, on every font. Colours are the logo's own, with anything
+too dark to see on a dark terminal lifted until it is.
+
+The real logos are sampled onto that grid at build time. A cell is about
+twice as tall as it is wide, so the image is sampled with that aspect and
+keeps its proportions on screen. Each cell is decided by a vote: sixteen
+samples of the source per cell, every sample matched to the nearest ink
+of the logo, and the cell takes the ink most of them agree on. Averaging
+the samples and matching the mean instead invents colours the logo does
+not have wherever two inks meet — a pink seam between red and white — and
+smears every edge; the vote keeps edges drawn.
 
 The name above the interface is the same drawing at every size rather
-than a different face for narrow terminals: it is shipped at five widths
+than a different face for narrow terminals: it is shipped at three widths
 and the largest that fits is used, with the mark beside it taking the
 largest variant no taller than the name. Narrowing the terminal shrinks
-the pair instead of swapping it for something else.
-
-It ships as coverage only - how much of each cell the letter fills - so
-the colour is decided when it is drawn and follows the theme, a gradient
-from `primary` to `accent`.
-
-A cell that is one colour top and bottom is painted as a coloured
-background rather than a block glyph. A background fills the cell whatever
-the font does; a block that falls a pixel short of the cell edge lets the
-terminal show through, and a column of those reads as stripes across the
-mark.
-
-Some fonts set the half block a few pixels below the top of the cell -
-measured at five pixels in a cell of twenty-eight in one of them. A cell
-with two colours then shows a band of the lower one along its top edge.
-**Solid marks** in Settings gives up the half block entirely and paints
-one colour per cell, so nothing depends on a glyph at all. It costs half
-the vertical detail and is the thing to reach for if the marks look
-striped.
+the pair instead of swapping it for something else, and a terminal too
+narrow for the smallest gets the name as plain text — below seven rows
+the letters stop being letters. It ships as coverage
+only — which cells the letters fill — so the colour is decided when it is
+drawn and follows the theme, a gradient from `primary` to `accent`.
 
 Shrinking an illustration to thirty-odd cells turns its gradients into
 confetti — a pixel here and there whose colour matches nothing around it.
@@ -429,13 +427,12 @@ python3 tools/make_screenshots.py    # -> docs/screens/*.svg
 ```
 
 `tools/ansi2svg.py` turns the renderer's ANSI output into SVG; box-drawing and
-block characters are emitted as geometry rather than glyphs, so borders connect
-and the marks have no seams. `tools/img2art.py` samples an image into the
-colour cell format under `xenproxy/art/` — at build time, so the runtime
-needs no image library. It scales with premultiplied alpha, because a fully
-transparent pixel still carries a colour and resampling would otherwise mix
-that into the rim of every shape, which is where a pale halo around a logo
-comes from.
+block characters are emitted as geometry rather than glyphs, so borders connect.
+`tools/img2art.py` samples an image into the cell format under
+`xenproxy/art/` — at build time, so the runtime needs no image library. It
+scales with premultiplied alpha, because a fully transparent pixel still
+carries a colour and resampling would otherwise mix that into the rim of
+every shape, which is where a pale halo around a logo comes from.
 
 ## Licence
 

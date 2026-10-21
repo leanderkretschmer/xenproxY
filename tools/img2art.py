@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-"""Turn a logo image into the colour cell art the UI ships.
+"""Turn a logo image into the cell art the UI ships.
 
-A terminal cell is about twice as tall as it is wide, and U+2580 splits one
-into an upper and a lower half. Two stacked pixels therefore fit in one
-cell and come out square, which is why the grids below are W x 2H.
+One character per terminal cell, one colour per cell, and at draw time the
+colour is painted as a background under a space - so nothing about the
+picture depends on how a font draws a glyph. A cell is about twice as tall
+as it is wide; the image is sampled on that grid, and the mark keeps its
+proportions on screen.
+
+Each cell is decided by a vote. The source is shrunk to a few samples per
+cell, every sample is matched to the nearest ink in the logo's palette, and
+the cell takes the ink most of its samples agree on. Averaging the samples
+and matching the mean instead invents colours the logo does not have
+wherever two inks meet - a pink seam between red and white, say - and the
+edges come out smeared rather than drawn.
 
 The output is a small text file: a palette of hex colours, then one line
-per pixel row, one character per pixel - a base-36 palette index, or `.`
-for transparent. The runtime needs no image library to read it.
+per cell row, one character per cell - a base-36 palette index, or `.` for
+nothing. The runtime needs no image library to read it.
 
     python3 tools/img2art.py proxmox.webp proxmox --widths 16,24,36
 """
@@ -23,11 +32,10 @@ DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "xenproxy", "art")
 
-
-# Edge pixels that are mostly there are kept. Dropping everything below
-# half opacity eats the anti-aliased rim of a shape and leaves the result
-# looking nibbled.
-ALPHA_FLOOR = 96
+CELL_ASPECT = 2.0       # height of a terminal cell over its width
+SUPER = 4               # samples per cell edge: 16 votes per cell
+ALPHA_ON = 128          # a sample this opaque counts as drawn
+COVER = 0.4             # share of drawn samples for the cell to be drawn
 
 
 def resize_premultiplied(im: Image.Image, size) -> Image.Image:
@@ -37,15 +45,16 @@ def resize_premultiplied(im: Image.Image, size) -> Image.Image:
     is white, black or a leftover green. Resampling mixes that into the rim
     of every shape unless the channels are weighted by their own alpha
     first - which is exactly where the pale halo around a logo comes from.
+    Box filtering is the plain area average: no ringing, so no overshoot
+    for the vote to mistake for a third ink.
     """
     r, g, b, a = im.split()
-    af = a.point(lambda v: v)
-    pre = [Image.composite(ch, Image.new("L", im.size, 0), af)
+    black = Image.new("L", im.size, 0)
+    pre = [Image.composite(ch, black, a).resize(size, Image.BOX)
            for ch in (r, g, b)]
-    pre = [ch.resize(size, Image.LANCZOS) for ch in pre]
-    small_a = a.resize(size, Image.LANCZOS)
-    out = []
+    small_a = a.resize(size, Image.BOX)
     ap = small_a.load()
+    out = []
     for ch in pre:
         px = ch.load()
         plane = Image.new("L", size)
@@ -77,83 +86,16 @@ def seal_gaps(im: Image.Image, colour, radius: int):
     sealed = 0
     for y in range(h):
         for x in range(w):
-            if src[x, y] < ALPHA_FLOOR <= dst[x, y]:
+            if src[x, y] < ALPHA_ON <= dst[x, y]:
                 px[x, y] = (*colour, 255)
                 sealed += 1
     return out, sealed
 
 
-def fill_holes(im: Image.Image, colour) -> Image.Image:
-    """Close the transparent gaps *inside* a mark.
-
-    A logo drawn for paper separates its shapes with the page showing
-    through. On a dark terminal that page is not there, so the separations
-    come out as cracks running across the shape. Anything transparent that
-    cannot be reached from the edge of the image is interior, and gets the
-    colour the logo was drawn against.
-    """
-    w, h = im.size
-    alpha = im.getchannel("A").load()
-    outside = bytearray(w * h)
-    stack = []
-    for x in range(w):
-        for y in (0, h - 1):
-            if alpha[x, y] < ALPHA_FLOOR:
-                stack.append((x, y))
-    for y in range(h):
-        for x in (0, w - 1):
-            if alpha[x, y] < ALPHA_FLOOR:
-                stack.append((x, y))
-    while stack:
-        x, y = stack.pop()
-        i = y * w + x
-        if outside[i]:
-            continue
-        outside[i] = 1
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < w and 0 <= ny < h and not outside[ny * w + nx] \
-                    and alpha[nx, ny] < ALPHA_FLOOR:
-                stack.append((nx, ny))
-    out = im.copy()
-    px = out.load()
-    filled = 0
-    for y in range(h):
-        for x in range(w):
-            if alpha[x, y] < ALPHA_FLOOR and not outside[y * w + x]:
-                px[x, y] = (*colour, 255)
-                filled += 1
-    return out, filled
-
-
 def trim(im: Image.Image) -> Image.Image:
     """Crop to what is actually drawn, so the mark fills its grid."""
-    alpha = im.getchannel("A")
-    box = alpha.getbbox()
+    box = im.getchannel("A").getbbox()
     return im.crop(box) if box else im
-
-
-def as_mask(im: Image.Image, levels: int):
-    """Coverage only, as a grey ramp.
-
-    Used for the wordmark: the shape is shipped, the colour is decided when
-    it is drawn, so it follows the theme instead of being baked in.
-    """
-    alpha = im.getchannel("A").load()
-    w, h = im.size
-    palette = [(0, 0, 0)] + [
-        (round(255 * (i + 1) / levels),) * 3 for i in range(levels)]
-    grid = []
-    for y in range(h):
-        row = []
-        for x in range(w):
-            a = alpha[x, y]
-            row.append(None if a < ALPHA_FLOOR
-                       else min(levels, 1 + a * levels // 256))
-            if row[-1] == 0:
-                row[-1] = 1
-        grid.append(row)
-    return palette, grid
 
 
 def source_palette(im: Image.Image, colours: int, merge: int = 44):
@@ -183,53 +125,57 @@ def source_palette(im: Image.Image, colours: int, merge: int = 44):
     return chosen or [(255, 255, 255)]
 
 
-def map_to(im: Image.Image, palette):
-    """Nearest palette entry per pixel, with transparency kept apart."""
-    alpha = im.getchannel("A").load()
-    px = im.load()
+def sample(im: Image.Image, palette, cols: int, rows: int, cover: float,
+           mask: bool = False):
+    """Index grid, one entry per cell, decided by the vote described above.
+
+    A cell is drawn when at least `cover` of its samples are; below that
+    it is the rim of a shape and stays empty rather than becoming a
+    smudge. For a mask the inks do not matter, only the coverage.
+    """
+    big = resize_premultiplied(im, (cols * SUPER, rows * SUPER))
+    px = big.load()
+    need = cover * SUPER * SUPER
     cache: dict = {}
     grid = []
-    for y in range(im.height):
+    for cy in range(rows):
         row = []
-        for x in range(im.width):
-            if alpha[x, y] < ALPHA_FLOOR:
+        for cx in range(cols):
+            tally: dict = {}
+            drawn = 0
+            for sy in range(SUPER):
+                for sx in range(SUPER):
+                    r, g, b, a = px[cx * SUPER + sx, cy * SUPER + sy]
+                    if a < ALPHA_ON:
+                        continue
+                    drawn += 1
+                    if mask:
+                        continue
+                    c = (r, g, b)
+                    i = cache.get(c)
+                    if i is None:
+                        i = min(range(len(palette)),
+                                key=lambda k: sum((c[j] - palette[k][j]) ** 2
+                                                  for j in range(3)))
+                        cache[c] = i
+                    tally[i] = tally.get(i, 0) + 1
+            if drawn < need:
                 row.append(None)
-                continue
-            c = px[x, y][:3]
-            hit = cache.get(c)
-            if hit is None:
-                hit = min(range(len(palette)),
-                          key=lambda i: sum((c[j] - palette[i][j]) ** 2
-                                            for j in range(3)))
-                cache[c] = hit
-            row.append(hit)
+            elif mask:
+                row.append(0)
+            else:
+                row.append(max(tally.items(), key=lambda kv: kv[1])[0])
         grid.append(row)
     return grid
 
 
-def quantise(im: Image.Image, colours: int):
-    """(palette, index grid) with transparent pixels marked as None."""
-    rgb = Image.new("RGB", im.size, (0, 0, 0))
-    rgb.paste(im.convert("RGB"), (0, 0))
-    pal_img = rgb.convert("P", palette=Image.ADAPTIVE, colors=colours)
-    raw = pal_img.getpalette() or []
-    palette = [tuple(raw[i * 3:i * 3 + 3]) for i in range(colours)]
-    alpha = im.getchannel("A").load()
-    idx = pal_img.load()
-    w, h = im.size
-    grid = [[None if alpha[x, y] < ALPHA_FLOOR else idx[x, y]
-             for x in range(w)] for y in range(h)]
-    return palette, grid
-
-
 def despeckle(grid, rounds: int = 3):
-    """Let the majority of a pixel's neighbours decide what it is.
+    """Let the majority of a cell's neighbours decide what it is.
 
-    Shrinking a detailed illustration to thirty-odd pixels turns its
-    gradients into confetti: a pixel here and there whose colour matches
-    nothing around it. Flattening those into whatever surrounds them is
-    what the eye does anyway at this size, and it is the difference
-    between a mark and a smudge.
+    Shrinking a detailed illustration to thirty-odd cells leaves a cell
+    here and there whose colour matches nothing around it. Flattening
+    those into whatever surrounds them is what the eye does anyway at this
+    size, and it is the difference between a mark and a smudge.
     """
     h = len(grid)
     for _ in range(rounds):
@@ -253,7 +199,10 @@ def despeckle(grid, rounds: int = 3):
                 if same > 1 or not tally:
                     continue
                 best, count = max(tally.items(), key=lambda kv: kv[1])
-                if count >= 5 and best != here:
+                # a cell with no neighbour of its own colour is noise
+                # already; one with a single such neighbour is the end
+                # of something and needs a clear majority against it
+                if count >= (3 if same == 0 else 5) and best != here:
                     out[y][x] = best
                     changed += 1
         grid = out
@@ -264,7 +213,7 @@ def despeckle(grid, rounds: int = 3):
 
 def render(path: str, name: str, width: int, colours: int,
            hole_fill=None, seal_radius: int = 12, mask: bool = False,
-           clean: bool = True, adaptive: bool = False) -> str:
+           clean: bool = True, cover: float = COVER) -> str:
     im = Image.open(path).convert("RGBA")
     original = im
     if hole_fill:
@@ -272,36 +221,24 @@ def render(path: str, name: str, width: int, colours: int,
         if sealed:
             print(f"    sealed {sealed} pixels of separation")
     im = trim(im)
-    # square pixels: the grid is as tall as it is wide, and the renderer
-    # folds every two rows into one cell
-    side = width
-    scale = min(side / im.width, side / im.height)
-    tw, th = max(1, round(im.width * scale)), max(1, round(im.height * scale))
-    im = resize_premultiplied(im, (tw, th))
-    if th % 2:
-        th += 1
-        im = im.crop((0, 0, tw, th))        # keeps the pairing even
-    canvas = Image.new("RGBA", (side, th), (0, 0, 0, 0))
-    canvas.paste(im, ((side - tw) // 2, 0))
-
-    if mask:
-        palette, grid = as_mask(canvas, colours)
-    elif adaptive:
-        palette, grid = quantise(canvas, colours)
-    else:
-        palette = source_palette(original, colours)
-        grid = map_to(canvas, palette)
-    if clean:
+    # the box is `width` cells wide and as tall as that is on screen
+    scale = min(width / im.width, width / im.height)
+    cols = max(1, round(im.width * scale))
+    rows = max(1, round(im.height * scale / CELL_ASPECT))
+    palette = [(255, 255, 255)] if mask else source_palette(original, colours)
+    grid = sample(im, palette, cols, rows, cover, mask)
+    if clean and not mask:
         grid = despeckle(grid)
-    palette = list(palette)
+
     used = sorted({v for row in grid for v in row if v is not None})
     remap = {old: i for i, old in enumerate(used)}
-    lines = [f"# {name} {side}x{th // 2} cells"]
+    left = (width - cols) // 2
+    lines = [f"# {name} {width}x{rows} cells"]
     lines.append("palette " + " ".join(
         "%02x%02x%02x" % palette[o] for o in used))
     for row in grid:
-        lines.append("".join("." if v is None else DIGITS[remap[v]]
-                             for v in row))
+        body = "".join("." if v is None else DIGITS[remap[v]] for v in row)
+        lines.append("." * left + body + "." * (width - cols - left))
     return "\n".join(lines) + "\n"
 
 
@@ -311,11 +248,11 @@ def main() -> int:
     ap.add_argument("name")
     ap.add_argument("--widths", default="16,24,36")
     ap.add_argument("--colours", type=int, default=12)
-    ap.add_argument("--adaptive", action="store_true",
-                    help="let the quantiser pick colours from the shrunk "
-                         "image instead of reading them off the original")
+    ap.add_argument("--cover", type=float, default=COVER,
+                    help="share of a cell that must be drawn for the cell "
+                         "to be - lower makes thin strokes survive")
     ap.add_argument("--no-clean", action="store_true",
-                    help="keep every stray pixel the downscale produced")
+                    help="keep every stray cell the downscale produced")
     ap.add_argument("--mask", action="store_true",
                     help="ship coverage only; the colour is applied when the "
                          "art is drawn, so it follows the theme")
@@ -332,12 +269,12 @@ def main() -> int:
     for w in [int(x) for x in args.widths.split(",")]:
         text = render(args.image, args.name, w, args.colours, hole,
                       args.seal_radius, args.mask, not args.no_clean,
-                      args.adaptive)
+                      args.cover)
         out = os.path.join(OUT_DIR, f"{args.name}-{w}.art")
         with open(out, "w", encoding="utf-8") as fh:
             fh.write(text)
         rows = len(text.splitlines()) - 2
-        print(f"  {os.path.basename(out):<20} {w}x{rows // 2} cells, "
+        print(f"  {os.path.basename(out):<20} {w}x{rows} cells, "
               f"{len(text)} bytes")
     return 0
 

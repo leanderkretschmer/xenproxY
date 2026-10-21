@@ -605,9 +605,7 @@ class App:
             # one worth showing when there is room for it.
             room = rows - 17
             if room >= 4:
-                banner = logo.banner(
-                    th, max(full, cols), min(room, 14),
-                    solid=bool(config.setting(self.cfg, "solid_marks")))
+                banner = logo.banner(th, max(full, cols), min(room, 14))
         if banner:
             banner = banner + [""]
         # the banner is already centred across the whole terminal, so it
@@ -755,8 +753,7 @@ class App:
         width = logo.best(name, inner, room)
         if not width:
             return []
-        art = logo.render(name, self.th, width, centre=inner,
-                          solid=bool(config.setting(self.cfg, "solid_marks")))
+        art = logo.render(name, self.th, width, centre=inner)
         h = len(art)
         top = 1 if room >= h + 2 else 0
         bottom = 1 if room >= h + 1 else 0
@@ -1034,13 +1031,6 @@ class App:
                   help="Drift a faint field through the space either side "
                        "of the interface on a wide terminal. Costs a "
                        "repaint a few times a second."),
-            Field("solid_marks", "Solid marks",
-                  Toggle(s.get("solid_marks", False)),
-                  help="Draw the logos as flat cells instead of half "
-                       "blocks. Costs vertical detail, but some fonts set "
-                       "the half block a few pixels low and every row of "
-                       "them then shows a band - turn this on if the marks "
-                       "look striped."),
             Field("mouse", "Mouse", Toggle(s.get("mouse", True)),
                   help="Click to pick, wheel to scroll. While this is on the "
                        "terminal's own text selection is disabled - press 'm' "
