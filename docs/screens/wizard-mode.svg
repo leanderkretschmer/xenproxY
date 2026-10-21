@@ -8,7 +8,7 @@
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - migration wizard</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
 <text x="96.0" y="46.9" fill="#565f89" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> ▸ xen-node-1</text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.1 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="171.60" lengthAdjust="spacing" font-weight="600"> Migrate minecraft-01 </text>
 <text x="735.6" y="81.7" fill="#565f89" xml:space="preserve" textLength="78.00" lengthAdjust="spacing"> step 1/6 </text>

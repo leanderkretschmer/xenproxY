@@ -7,7 +7,7 @@
 <circle cx="52" cy="17" r="5.5" fill="#9ece6a"/>
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - settings</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.1 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> Settings </text>
 <text x="25.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   1 Servers      </text>
@@ -53,13 +53,13 @@
 <text x="337.8" y="221.1" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ○ off </text>
 <text x="189.6" y="255.9" fill="#7dcfff" xml:space="preserve" textLength="179.40" lengthAdjust="spacing">  ←→ or click to choose</text>
 <text x="205.2" y="290.8" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> updates </text>
-<text x="189.6" y="308.2" fill="#9ece6a" xml:space="preserve" textLength="374.40" lengthAdjust="spacing">✓ xenproxY 0.2.1 is the newest published version</text>
+<text x="189.6" y="308.2" fill="#9ece6a" xml:space="preserve" textLength="374.40" lengthAdjust="spacing">✓ xenproxY 0.2.2 is the newest published version</text>
 <text x="189.6" y="343.0" fill="#565f89" xml:space="preserve" textLength="93.60" lengthAdjust="spacing">  curl -fsSL</text>
 <text x="189.6" y="360.5" fill="#565f89" xml:space="preserve" textLength="608.40" lengthAdjust="spacing">  https://raw.githubusercontent.com/leanderkretschmer/xenproxY/main/install.sh</text>
 <text x="189.6" y="377.9" fill="#565f89" xml:space="preserve" textLength="62.40" lengthAdjust="spacing">  | bash</text>
 <text x="205.2" y="412.7" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> about </text>
 <text x="189.6" y="430.1" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Version  </text>
-<text x="259.8" y="430.1" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">0.2.1                                                                   </text>
+<text x="259.8" y="430.1" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">0.2.2                                                                   </text>
 <text x="189.6" y="447.6" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Node     </text>
 <text x="259.8" y="447.6" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">pve-01 - pve-manager/9.2.11                                             </text>
 <text x="189.6" y="465.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Config   </text>

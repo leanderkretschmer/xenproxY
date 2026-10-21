@@ -44,6 +44,10 @@ RING = {
 }
 
 SIDE_W = 20
+# Past this the layout stops growing and is centred instead. A list row whose
+# hint sits two hundred columns from its label is not more readable for the
+# space, it is less.
+MAX_W = 160
 
 
 def _short_bytes(n: float) -> str:
@@ -441,27 +445,33 @@ class App:
     # -- layout ------------------------------------------------------
     def compose(self, cols: int, rows: int) -> list[str]:
         self.hit.reset()
-        self.wide = cols >= 80
-        head = self.header(cols)
+        view = min(cols, MAX_W)
+        x0 = (cols - view) // 2
+        self.wide = view >= 80
+        head = self.header(view)
         # measured first so the body knows its height, rendered again below
         # once the screens have had their say about which buttons are live
-        bar_h = len(self.action_bar(cols))
-        foot = self.footer(cols)
+        bar_h = len(self.action_bar(view))
+        foot = self.footer(view)
         body_h = max(3, rows - len(head) - bar_h - len(foot))
         body_y = len(head)
 
         if self.wide:
-            content_w = cols - SIDE_W - 1
-            side = self.sidebar(SIDE_W, body_h, 0, body_y)
-            content = self.content(content_w, body_h, SIDE_W + 1, body_y)
+            content_w = view - SIDE_W - 1
+            side = self.sidebar(SIDE_W, body_h, x0, body_y)
+            content = self.content(content_w, body_h, x0 + SIDE_W + 1, body_y)
             body = R.columns([side, content], [SIDE_W, content_w], gap=1)
         else:
-            body = self.content(cols, body_h, 0, body_y)
+            body = self.content(view, body_h, x0, body_y)
         body = body[:body_h] + [""] * max(0, body_h - len(body))
 
-        bar_rows = self.action_bar(cols, oy=body_y + body_h, register=True)
+        bar_rows = self.action_bar(view, oy=body_y + body_h, register=True,
+                                   ox=x0)
         bar_rows = (bar_rows + [""] * bar_h)[:bar_h]
         frame = head + body + bar_rows + foot
+        if x0:
+            pad_left = " " * x0
+            frame = [pad_left + line if line else line for line in frame]
         if self.overlay:
             frame = self.draw_overlay(frame, cols, rows)
         return frame
@@ -479,7 +489,8 @@ class App:
         gap = max(0, cols - vlen(left) - vlen(right))
         return [left + " " * gap + right, R.divider(th, cols)]
 
-    def action_bar(self, cols: int, oy: int = 0, register: bool = False) -> list[str]:
+    def action_bar(self, cols: int, oy: int = 0, register: bool = False,
+                   ox: int = 0) -> list[str]:
         """One row of buttons, in the same place on every screen."""
         th = self.th
         self.bar.set(self.buttons())
@@ -488,7 +499,7 @@ class App:
         rows = self.bar.render(
             th, cols - 2, focused=self.focus == "actions",
             hit=self.hit if register else None,
-            origin=(1, oy) if register else None,
+            origin=(ox + 1, oy) if register else None,
             hover=self.hover_arg if self.hover_action == "button" else None)
         return [" " + r for r in rows[:2]]
 
@@ -903,7 +914,7 @@ class App:
                   help="Needed for the XAPI disk export, even when SSH uses "
                        "a key."),
             Field("key", "SSH key", TextField(e.get("key", ""),
-                                              placeholder="/etc/xenproxy/keys/id"),
+                                              placeholder="optional - path to a private key"),
                   help="Optional path to a private key. With a key set, the "
                        "password is not used for the SSH session."),
             Field("port", "SSH port", TextField(str(e.get("port", 22)),
@@ -921,11 +932,14 @@ class App:
         self.overlay = {
             "kind": "server", "form": form, "first_run": first_run,
             "edit": bool(edit), "testing": None, "tested": False,
-            "focus": "form",
-            "bar": ButtonBar([Button("cancel", "Cancel", "esc"),
-                              Button("test", "Test connection", "ctrl-t"),
-                              Button("save", "Save", "enter")]),
+            "focus": "form", "bar": self._server_bar(),
         }
+
+    @staticmethod
+    def _server_bar() -> ButtonBar:
+        return ButtonBar([Button("cancel", "Cancel", "esc"),
+                          Button("test", "Test connection", "ctrl-t"),
+                          Button("save", "Save", "enter")])
 
     def open_update_modal(self) -> None:
         self.overlay = {
@@ -1016,10 +1030,15 @@ class App:
                 body.append(R.status_message(
                     th, f"{info.get('hostname', '')} - {info.get('version', '')}",
                     "success"))
-                body.append(R.status_message(
-                    th, f"XAPI certificate pinned {pin[:16]}…" if pin
-                    else "XAPI certificate could not be pinned",
-                    "success" if pin else "warning"))
+                if ov["form"].values().get("kind") == "incus":
+                    body.append(R.status_message(
+                        th, "disks will travel over this SSH session",
+                        "success"))
+                else:
+                    body.append(R.status_message(
+                        th, f"XAPI certificate pinned {pin[:16]}…" if pin
+                        else "XAPI certificate could not be pinned",
+                        "success" if pin else "warning"))
             return body, title, "primary"
         if ov["kind"] == "update":
             info = ov["info"] or {}
@@ -1206,15 +1225,9 @@ class App:
         ov = self.overlay
         if ov["kind"] == "server" and ov.get("host_key"):
             if k in ("y", "Y", "enter"):
-                offered = ov.pop("host_key")
-                # store only the key that was shown as the one to accept
-                trust_host_keys([pick_host_key(offered)])
-                self.notify("host key stored", "success")
-                self._test_overlay_server()
+                self._host_key_decision(True)
             elif k in ("n", "N", "esc"):
-                ov.pop("host_key", None)
-                ov.pop("pending_save", None)
-                self.notify("host key not stored - nothing was sent", "warning", 6)
+                self._host_key_decision(False)
             return
         if k == "tab" and ov.get("form") is not None:
             if ov.get("focus") == "form" and ov["form"].key("tab"):
@@ -1247,6 +1260,10 @@ class App:
         if not ov:
             return
         if ov["kind"] == "server":
+            if ov.get("host_key"):
+                # while the key question is open the two buttons answer it
+                self._host_key_decision(action == "accept")
+                return
             if action == "cancel":
                 self.close_overlay("cancel")
             elif action == "test":
@@ -1393,6 +1410,26 @@ class App:
             self.focus = "nav"
 
     # -- server modal plumbing -----------------------------------------
+    def _host_key_decision(self, accept: bool) -> None:
+        """Accept or decline the offered key, then hand the dialog back.
+
+        The bar has to be restored either way: while the question is open it
+        carries Cancel/Accept, and leaving it there would strand the dialog
+        with no Save button once the question is answered.
+        """
+        ov = self.overlay
+        offered = ov.pop("host_key", None)
+        ov["bar"] = self._server_bar()
+        ov["focus"] = "form"
+        if accept and offered:
+            # store only the key that was shown as the one to accept
+            trust_host_keys([pick_host_key(offered)])
+            self.notify("host key stored", "success")
+            self._test_overlay_server()
+        elif not accept:
+            ov.pop("pending_save", None)
+            self.notify("host key not stored - nothing was sent", "warning", 6)
+
     def _overlay_server_dict(self) -> dict:
         v = self.overlay["form"].values()
         return {

@@ -7,7 +7,7 @@
 <circle cx="52" cy="17" r="5.5" fill="#9ece6a"/>
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - first run</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.1 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="70.20" lengthAdjust="spacing" font-weight="600"> Servers </text>
 <rect x="25.8" y="86.3" width="140.40" height="17.4" fill="#1f2335"/>
@@ -37,7 +37,7 @@
 <text x="283.2" y="308.2" fill="#565f89" xml:space="preserve" textLength="358.80" lengthAdjust="spacing">Needed for the XAPI disk export, even when SSH</text>
 <text x="283.2" y="325.6" fill="#565f89" xml:space="preserve" textLength="85.80" lengthAdjust="spacing">uses a key.</text>
 <text x="142.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">SSH key           </text>
-<text x="298.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="163.80" lengthAdjust="spacing">/etc/xenproxy/keys/id</text>
+<text x="298.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="249.60" lengthAdjust="spacing">optional - path to a private key</text>
 <text x="142.8" y="360.5" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">SSH port          </text>
 <text x="298.8" y="360.5" fill="#c0caf5" xml:space="preserve" textLength="15.60" lengthAdjust="spacing">22</text>
 <text x="142.8" y="377.9" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">Verify TLS        </text>
