@@ -139,6 +139,26 @@ def stream_with_payload(payload):
     return out
 
 
+def stream_as_incus_writes_it(size):
+    """The layout a real export has, taken from one.
+
+    Two things in here are easy to get wrong. The disk's own metadata sits
+    in a *directory* called backup/virtual-machine, one character away from
+    the file; and the PAX header that carries the real size is itself named
+    after the file it describes, so a reader matching on the name alone
+    picks the wrong entry and finds twenty bytes of text.
+    """
+    out = ustar_header("backup/index.yaml", 12) + pad(b"name: big\n")
+    out += ustar_header("backup/virtual-machine", 0, b"5")
+    out += ustar_header("backup/virtual-machine/backup.yaml", 10) + pad(b"name: big\n")
+    out += ustar_header("backup/virtual-machine/templates", 0, b"5")
+    rec = pax_record("size", size)
+    out += ustar_header("backup/PaxHeaders.0/virtual-machine.img", len(rec), b"x")
+    out += pad(rec)
+    out += ustar_header("backup/virtual-machine.img", 0)
+    return out
+
+
 def check_payload(label, payload):
     data = stream_with_payload(payload)
     m = TarMember(FakeProc(data), "virtual-machine.img")
@@ -168,6 +188,8 @@ results = [
     expect_error("implausible size",
                  stream_gnu(1 << 50), "ceiling"),
     check_payload("payload read back whole", bytes(range(256)) * 37),
+    check("the layout a real export has",
+          stream_as_incus_writes_it(12 * (1 << 30)), 12 * (1 << 30)),
 ]
 print("\nall good" if all(results) else "\nFAILURES")
 sys.exit(0 if all(results) else 1)
