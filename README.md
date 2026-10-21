@@ -276,6 +276,15 @@ flattened into whatever surrounds it, which is what the eye does at this
 size anyway. Across the four marks that took the share of lone pixels from
 as much as 42% down to none for the flat ones.
 
+On a terminal wider than the interface, the space either side of it is
+not left blank: a faint field of marks drifts through it, swelling and
+fading on an eight-second breath, dim enough to read as texture rather
+than content. It loops over forty-eight phases that are built once, on a
+spare thread, so each frame of it is a lookup rather than arithmetic over
+ten thousand cells - a frame with it costs 2.7 ms against 1.6 without.
+It does mean a repaint a few times a second; **Breathing margins** in
+Settings turns it off, which is worth doing over a slow link.
+
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and
 `high-contrast`, each with rounded, single, double or plain ASCII borders.

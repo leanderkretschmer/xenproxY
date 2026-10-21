@@ -24,6 +24,7 @@ from ..text import scrub
 from ..theme import RESET, Theme
 from ..xen import XenHost
 from . import render as R
+from . import ambient
 from .hit import HitMap
 from . import logo
 from .term import Mouse, Term, pad, slice_cols, truncate, vlen
@@ -117,6 +118,7 @@ class App:
         self.hover_arg = None
         self.wide = True
         self._banner_rows = 0
+        self._ambient_live = False
 
         self.server_list = SelectList(pane="servers")
         self.guest_list = SelectList(pane="guests")
@@ -314,6 +316,8 @@ class App:
             return 0.12
         if time.time() < self.toast_until:
             return 0.25
+        if self._ambient_live:
+            return 1.0 / self.AMBIENT_RATE
         return 0.6
 
     def poll(self) -> None:
@@ -548,14 +552,47 @@ class App:
                                    ox=x0)
         bar_rows = (bar_rows + [""] * bar_h)[:bar_h]
         frame = head + body + bar_rows + foot
+        self._ambient_live = False
         if x0:
-            pad_left = " " * x0
-            frame = [line if i < self._banner_rows
-                     else (pad_left + line if line else line)
-                     for i, line in enumerate(frame)]
+            if config.setting(self.cfg, "ambient", True):
+                frame = self.breathe(frame, cols, rows, x0, view)
+                self._ambient_live = True
+            else:
+                pad_left = " " * x0
+                frame = [line if i < self._banner_rows
+                         else (pad_left + line if line else line)
+                         for i, line in enumerate(frame)]
         if self.overlay:
             frame = self.draw_overlay(frame, cols, rows)
         return frame
+
+    # One breath takes about eight seconds; slow enough to notice only
+    # when you are not looking at anything else.
+    AMBIENT_RATE = 6.0
+
+    def breathe(self, frame: list[str], cols: int, rows: int, x0: int,
+                view: int) -> list[str]:
+        """Fill the margins with the drifting field.
+
+        Only the dead space outside the interface is touched, and the rows
+        the wordmark spans are left alone - it is already across them.
+        """
+        th = self.th
+        ambient.warm(th, cols, rows, x0, view)
+        phase = int(time.monotonic() * self.AMBIENT_RATE)
+        left, right = ambient.margins(th, cols, rows, x0, view, phase)
+        # The lines have not been indented yet, so the field goes straight
+        # on either side of them - no slicing a string apart per row.
+        out = []
+        pad_left = " " * x0
+        for i, line in enumerate(frame):
+            if i < self._banner_rows:
+                out.append(line)
+            elif i >= len(left):
+                out.append(pad_left + line if line else line)
+            else:
+                out.append(left[i] + pad(line, view) + right[i])
+        return out
 
     def header(self, cols: int, rows: int, full: int = 0) -> list[str]:
         th = self.th
@@ -992,6 +1029,11 @@ class App:
             Field("border", "Border", Choice(
                 [(k, k) for k in ("rounded", "single", "double", "ascii")],
                 s.get("border", "rounded"))),
+            Field("ambient", "Breathing margins",
+                  Toggle(s.get("ambient", True)),
+                  help="Drift a faint field through the space either side "
+                       "of the interface on a wide terminal. Costs a "
+                       "repaint a few times a second."),
             Field("solid_marks", "Solid marks",
                   Toggle(s.get("solid_marks", False)),
                   help="Draw the logos as flat cells instead of half "

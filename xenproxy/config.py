@@ -16,6 +16,7 @@ DEFAULTS = {
         "mouse": True,
         "banner": True,
         "solid_marks": False,
+        "ambient": True,
         "default_storage": "",
         "default_bridge": "",
         "check_updates": True,
