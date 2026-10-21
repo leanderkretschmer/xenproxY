@@ -13,7 +13,6 @@ import json
 import os
 import re
 import shlex
-import struct
 import time
 
 from .sshclient import SSHClient, SSHError
@@ -141,6 +140,8 @@ class TarMember:
 
     def _seek(self, wanted: str, limit: int) -> None:
         skipped = 0
+        pax: dict = {}          # attributes that belong to the next entry
+        long_name = ""
         while True:
             head = self._read_exact(self.BLOCK)
             if len(head) < self.BLOCK or head == b"\0" * self.BLOCK:
@@ -153,10 +154,38 @@ class TarMember:
                 name = f"{prefix}/{name}"
             size = _octal(head[124:136])
             kind = head[156:157]
-            padded = (size + self.BLOCK - 1) // self.BLOCK * self.BLOCK
+
+            # A tar size field is eleven octal digits, so it stops just
+            # short of 8 GiB. Go - and with it Incus - writes anything
+            # larger as a PAX extended header in front of the entry,
+            # leaving the field at zero. Reading past those records is how
+            # a 64 GiB disk came out looking like a disk of no size at all.
+            if kind in (b"x", b"X", b"g"):
+                pax.update(_parse_pax(self._read_record(size)))
+                continue
+            if kind == b"L":            # GNU long name, same idea
+                long_name = self._read_record(size).split(
+                    b"\0", 1)[0].decode("utf-8", "replace")
+                continue
+
+            # The records above describe the entry that follows, so they are
+            # applied before anything is done with its length.
+            if long_name:
+                name, long_name = long_name, ""
+            if "path" in pax:
+                name = pax["path"]
+            if "size" in pax:
+                try:
+                    size = int(pax["size"])
+                except ValueError:
+                    pass
+            pax = {}
+
             if kind in (b"0", b"\0", b"") and name.endswith(wanted):
                 if size <= 0:
-                    raise SSHError(f"{name} in the export is empty")
+                    raise SSHError(
+                        f"{name} in the export declares no size - the tar "
+                        "header says zero and no PAX record overrides it")
                 if size > limit:
                     raise SSHError(
                         f"{name} claims {size} bytes, more than the "
@@ -166,16 +195,33 @@ class TarMember:
                 self.left = size
                 return
             # not ours: step over the payload, including its padding
-            skipped += padded
+            skipped += size
             if skipped > (1 << 30):
                 raise SSHError("the export stream does not look like an "
                                "instance backup")
-            left = padded
-            while left > 0:
-                chunk = self.raw.read(min(1 << 20, left))
-                if not chunk:
-                    raise SSHError("the export stream ended early")
-                left -= len(chunk)
+            self._drop(size)
+
+    def _read_record(self, size: int) -> bytes:
+        """A metadata record, read whole with its padding.
+
+        These are a few hundred bytes; the cap is there so a malformed
+        stream cannot ask for a disk image to be held in memory.
+        """
+        if size <= 0 or size > 1 << 16:
+            self._drop(size)
+            return b""
+        data = self._read_exact(size)
+        self._read_exact((-size) % self.BLOCK)
+        return data
+
+    def _drop(self, size: int) -> None:
+        """Step over a payload and its padding."""
+        left = max(0, size) + (-size) % self.BLOCK if size > 0 else 0
+        while left > 0:
+            chunk = self.raw.read(min(1 << 20, left))
+            if not chunk:
+                raise SSHError("the export stream ended early")
+            left -= len(chunk)
 
     # -- payload ------------------------------------------------------
     def readinto(self, view) -> int:
@@ -210,11 +256,34 @@ class TarMember:
             pass
 
 
+def _parse_pax(data: bytes) -> dict:
+    """`<len> <key>=<value>\n` records, as written in front of an entry."""
+    out: dict = {}
+    i = 0
+    while i < len(data):
+        j = data.find(b" ", i)
+        if j < 0:
+            break
+        try:
+            total = int(data[i:j])
+        except ValueError:
+            break
+        if total <= 0 or i + total > len(data):
+            break
+        field = data[j + 1:i + total].rstrip(b"\n")
+        key, _, value = field.partition(b"=")
+        out[key.decode("utf-8", "replace")] = value.decode("utf-8", "replace")
+        i += total
+    return out
+
+
 def _octal(field: bytes) -> int:
+    if field and field[0] & 0x80:
+        # GNU base-256: the top bit marks it, the rest is big-endian over
+        # the whole field
+        value = int.from_bytes(bytes([field[0] & 0x7f]) + field[1:], "big")
+        return value if field[0] != 0xff else -value
     raw = field.split(b"\0", 1)[0].strip()
-    if raw[:1] == b"\x80" or field[:1] == b"\x80":
-        # GNU base-256 encoding for sizes that do not fit in 11 octal digits
-        return struct.unpack(">q", b"\0" + field[5:12])[0] if len(field) >= 12 else 0
     try:
         return int(raw or b"0", 8)
     except ValueError:

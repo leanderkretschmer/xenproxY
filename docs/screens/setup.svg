@@ -181,7 +181,7 @@
 <rect x="673.20" y="103.68" width="7.80" height="17.42" fill="#b69af7" opacity="1.0" shape-rendering="crispEdges"/>
 <rect x="681.00" y="103.68" width="7.80" height="17.42" fill="#b79af7" opacity="1.0" shape-rendering="crispEdges"/>
 <text x="25.8" y="168.8" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing" font-weight="600">Servers</text>
-<text x="837.0" y="168.8" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.4.2 </text>
+<text x="837.0" y="168.8" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.4.3 </text>
 <text x="33.6" y="203.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="203.7" fill="#7aa2f7" xml:space="preserve" textLength="70.20" lengthAdjust="spacing" font-weight="600"> Servers </text>
 <rect x="25.8" y="208.2" width="140.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
