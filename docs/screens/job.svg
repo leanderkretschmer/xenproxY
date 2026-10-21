@@ -8,16 +8,16 @@
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - migration running</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
 <text x="96.0" y="46.9" fill="#565f89" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> ▸ xen-node-1</text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.0 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.1 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
-<text x="197.4" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="218.40" lengthAdjust="spacing"> Job 20261021-095933-f1d8bc </text>
+<text x="197.4" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="218.40" lengthAdjust="spacing"> Job 20261021-100154-a053aa </text>
 <text x="743.4" y="81.7" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> running </text>
 <text x="25.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   1 Servers      </text>
 <text x="189.6" y="99.2" fill="#565f89" xml:space="preserve" textLength="31.20" lengthAdjust="spacing">Jobs</text>
 <text x="220.8" y="99.2" fill="#3b4261" xml:space="preserve" textLength="23.40" lengthAdjust="spacing"> ▸ </text>
 <text x="244.2" y="99.2" fill="#565f89" xml:space="preserve" textLength="93.60" lengthAdjust="spacing">minecraft-01</text>
 <text x="337.8" y="99.2" fill="#3b4261" xml:space="preserve" textLength="23.40" lengthAdjust="spacing"> ▸ </text>
-<text x="361.2" y="99.2" fill="#c0caf5" xml:space="preserve" textLength="171.60" lengthAdjust="spacing" font-weight="600">20261021-095933-f1d8bc</text>
+<text x="361.2" y="99.2" fill="#c0caf5" xml:space="preserve" textLength="171.60" lengthAdjust="spacing" font-weight="600">20261021-100154-a053aa</text>
 <text x="25.8" y="116.6" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   2 Guests       </text>
 <rect x="25.8" y="121.1" width="124.80" height="17.4" fill="#1f2335"/>
 <text x="25.8" y="134.0" fill="#c0caf5" xml:space="preserve" textLength="124.80" lengthAdjust="spacing"> ❯ 3 Jobs       </text>
@@ -37,21 +37,21 @@
 <rect x="454.80" y="277.88" width="296.40" height="17.42" fill="#3b4261" opacity="0.25"/>
 <text x="751.2" y="290.8" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">  47.0%</text>
 <text x="205.2" y="325.6" fill="#565f89" xml:space="preserve" textLength="39.00" lengthAdjust="spacing"> log </text>
-<text x="189.6" y="343.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:56:33 </text>
+<text x="189.6" y="343.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:58:54 </text>
 <text x="259.8" y="343.0" fill="#9ece6a" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">source guest halted</text>
-<text x="189.6" y="360.5" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:56:53 </text>
+<text x="189.6" y="360.5" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:59:14 </text>
 <text x="259.8" y="360.5" fill="#c0caf5" xml:space="preserve" textLength="382.20" lengthAdjust="spacing">allocating vm-210-disk-0 on nvme-pool - 200.0 GiB</text>
-<text x="189.6" y="377.9" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:57:13 </text>
+<text x="189.6" y="377.9" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:59:34 </text>
 <text x="259.8" y="377.9" fill="#c0caf5" xml:space="preserve" textLength="304.20" lengthAdjust="spacing">streaming VDI 4097f33c -&gt; vm-210-disk-0</text>
-<text x="189.6" y="395.3" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:57:33 </text>
+<text x="189.6" y="395.3" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:59:54 </text>
 <text x="259.8" y="395.3" fill="#c0caf5" xml:space="preserve" textLength="241.80" lengthAdjust="spacing">200.0 GiB in 631s (324.6 MiB/s)</text>
-<text x="189.6" y="412.7" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:57:53 </text>
+<text x="189.6" y="412.7" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">10:00:14 </text>
 <text x="259.8" y="412.7" fill="#c0caf5" xml:space="preserve" textLength="218.40" lengthAdjust="spacing">verifying the written volume</text>
-<text x="189.6" y="430.1" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:58:13 </text>
+<text x="189.6" y="430.1" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">10:00:34 </text>
 <text x="259.8" y="430.1" fill="#9ece6a" xml:space="preserve" textLength="546.00" lengthAdjust="spacing">md5 eb8f85801ec2475ee150ee0c6fb3709c - written volume matches the str…</text>
-<text x="189.6" y="447.6" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:58:33 </text>
+<text x="189.6" y="447.6" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">10:00:54 </text>
 <text x="259.8" y="447.6" fill="#c0caf5" xml:space="preserve" textLength="382.20" lengthAdjust="spacing">allocating vm-210-disk-1 on nvme-pool - 500.0 GiB</text>
-<text x="189.6" y="465.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">09:58:53 </text>
+<text x="189.6" y="465.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">10:01:14 </text>
 <text x="259.8" y="465.0" fill="#c0caf5" xml:space="preserve" textLength="304.20" lengthAdjust="spacing">streaming VDI 9b21ac04 -&gt; vm-210-disk-1</text>
 <rect x="25.8" y="504.3" width="148.20" height="17.4" fill="#1f2335"/>
 <text x="25.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="148.20" lengthAdjust="spacing"> Back to jobs  esc </text>
