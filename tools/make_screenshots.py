@@ -256,6 +256,10 @@ def main() -> int:
     app = new_app()
     app.goto("settings")
     app.focus = "form"
+    from xenproxy import update as _update
+    app.update_state = {"state": _update.CURRENT, "error": "",
+                        "info": {"version": __import__(
+                            "xenproxy").__version__, "notes": ""}}
     shot("settings.svg", app.compose(COLS, ROWS), "xenproxY - settings")
 
     app = new_app()

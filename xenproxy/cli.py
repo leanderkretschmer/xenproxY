@@ -313,18 +313,21 @@ def cmd_jobs(args) -> int:
 
 
 def cmd_update(args) -> int:
-    info = update.latest()
-    if not info:
-        print("could not reach GitHub")
-        return 1
-    if not update.is_newer(info["version"]):
-        print(f"xenproxY {__version__} is current")
-        return 0
-    print(f"version {info['version']} is available (you have {__version__})")
+    st = update.status()
+    text, _kind = update.describe(st)
+    print(text)
     if args.check:
+        return 0 if st["state"] in (update.NEWER, update.CURRENT,
+                                    update.NONE) else 1
+    if st["state"] != update.NEWER and not args.force:
+        if st["state"] == update.UNREACHABLE:
+            return 1
+        print("pass --force to re-run the installer anyway")
         return 0
     if not args.yes:
-        if input("install it now? [y/N] ").strip().lower() not in ("y", "yes"):
+        prompt = ("install it now? [y/N] " if st["state"] == update.NEWER
+                  else f"re-run {update.install_command()}? [y/N] ")
+        if input(prompt).strip().lower() not in ("y", "yes"):
             return 0
     import subprocess
     cp = subprocess.run(["bash", "-lc", update.install_command()], text=True)
@@ -409,7 +412,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_jobs)
 
     p = sub.add_parser("update", help="check for and install a new version")
-    p.add_argument("--check", action="store_true")
+    p.add_argument("--check", action="store_true",
+                   help="only report what is published, install nothing")
+    p.add_argument("--force", action="store_true",
+                   help="re-run the installer even when no newer version is "
+                        "published - pulls the current main branch")
     p.add_argument("--yes", "-y", action="store_true")
     p.set_defaults(func=cmd_update)
     return ap

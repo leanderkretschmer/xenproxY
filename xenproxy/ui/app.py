@@ -15,7 +15,8 @@ from __future__ import annotations
 import threading
 import time
 
-from .. import __version__, config, jobs as jobmod, migrate, pve, update
+from .. import (__repo__, __version__, config, jobs as jobmod, migrate,
+                 pve, update)
 from ..incus import IncusHost
 from ..sshclient import (SSHClient, SSHError, host_key_known,
                          pick_host_key, scan_host_keys, trust_host_keys)
@@ -117,6 +118,8 @@ class App:
         self.probe_task: Task | None = None
         self.update_task: Task | None = None
         self.update_info: dict | None = None
+        self.update_state: dict | None = None
+        self.update_asked = False
 
         self.overlay = None      # dict describing a modal
         self.wizard = None       # WizardState
@@ -125,7 +128,9 @@ class App:
 
         self.refresh_servers()
         if config.setting(self.cfg, "check_updates", True):
-            self.update_task = Task(update.check)
+            # the check on start stays quiet unless there is news; being told
+            # at every launch that GitHub was unreachable helps nobody
+            self.update_task = Task(update.status)
 
     # -- helpers -----------------------------------------------------
     def notify(self, text: str, kind: str = "info", secs: float = 4.0) -> None:
@@ -262,9 +267,22 @@ class App:
                             f"({info.get('version', '')})", "success", 6)
             self.probe_task = None
         if self.update_task and self.update_task.done:
-            self.update_info = self.update_task.result
+            st = self.update_task.result
+            if self.update_task.error:
+                st = {"state": update.UNREACHABLE,
+                      "error": self.update_task.error, "info": None}
+            self.update_state = st or {}
+            self.update_info = (self.update_state.get("info")
+                                if self.update_state.get("state") == update.NEWER
+                                else None)
+            text, kind = update.describe(self.update_state)
             if self.update_info:
                 self.open_update_modal()
+            elif self.update_asked:
+                # an explicit check always says what it found - silence is
+                # indistinguishable from a check that never ran
+                self.notify(text, kind, 8)
+            self.update_asked = False
             self.update_task = None
 
     # -- actions ------------------------------------------------------
@@ -301,6 +319,7 @@ class App:
             return [
                 Button("set.save", "Save", "s"),
                 Button("set.update", "Check for updates", "u"),
+                Button("set.reinstall", "Reinstall", "i"),
             ]
         if self.screen == "joblog":
             j = self.open_job
@@ -352,8 +371,15 @@ class App:
         elif action == "set.save":
             self.save_settings()
         elif action == "set.update":
-            self.notify("checking for updates", "info", 2)
-            self.update_task = Task(update.check)
+            self.notify("checking for updates", "info", 3)
+            self.update_asked = True
+            self.update_task = Task(update.status)
+        elif action == "set.reinstall":
+            self.open_confirm(
+                "Re-run the installer? It fetches the current main branch "
+                f"from {__repo__}, replaces /opt/xenproxy and leaves "
+                "/etc/xenproxy alone. xenproxY closes afterwards so the new "
+                "version starts fresh.", self.do_update, yes="Reinstall")
         elif action == "log.back":
             self.goto("jobs")
         elif action == "log.cancel" and self.open_job:
@@ -821,6 +847,18 @@ class App:
         hint = self.settings_form.hint(th)
         if hint and self.focus == "form":
             rows += ["", th.paint("  " + hint, "info")]
+        if self.update_state:
+            text, kind = update.describe(self.update_state)
+            rows += ["", R.divider(th, inner, "updates")]
+            # wrapped, not truncated: the reason is the whole point of the
+            # line, and the install command has to be copyable
+            wrapped = R.wrap(text, inner - 2)
+            rows.append(R.status_message(th, wrapped[0], kind))
+            rows += [th.paint("  " + l, {"danger": "danger", "warning":
+                                         "warning"}.get(kind, "muted"))
+                     for l in wrapped[1:]]
+            rows += [""] + [th.paint("  " + l, "muted") for l in
+                            R.wrap(update.install_command(), inner - 2)]
         rows += ["", R.divider(th, inner, "about")]
         rows += R.key_value(th, [
             ("Version", __version__),
@@ -828,10 +866,6 @@ class App:
             ("Config", config.CONF_FILE),
             ("Jobs", jobmod.JOB_DIR),
         ], inner)
-        if self.update_info:
-            rows += ["", R.status_message(
-                th, f"version {self.update_info['version']} is available",
-                "warning")]
         return R.panel(th, rows, width, title="Settings",
                        focused=self.focus == "form", height=height)
 

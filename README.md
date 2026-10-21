@@ -208,9 +208,28 @@ xenproxY update --check
 
 ## Updates
 
-On start xenproxY asks GitHub for the newest release and offers to update when
-one exists. `xenproxY update` does the same on demand; `--check` only reports.
-Updating replaces `/opt/xenproxy` and leaves `/etc/xenproxy` alone.
+On start xenproxY asks GitHub for the newest published version and offers to
+update when one exists; that check stays quiet otherwise, so a node without
+internet is not nagged at every launch.
+
+**Check for updates** in Settings always says what it found — a newer version,
+that you are on the newest one, that nothing is published yet, or why GitHub
+could not be asked (an unauthenticated API allows 60 requests an hour per
+address, which a node behind a busy NAT does run into). The answer also stays
+on the Settings screen rather than only in a toast.
+
+**Reinstall** re-runs the installer against the current `main` branch. That is
+the way to move to a newer commit when no release is tagged for it, and it is
+the same thing as running the one-liner by hand:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/leanderkretschmer/xenproxY/main/install.sh | bash
+xenproxY update --check          # report only
+xenproxY update --force --yes    # reinstall from main without asking
+```
+
+Either way `/opt/xenproxy` is replaced and `/etc/xenproxy` is left alone, so
+servers, host keys and settings survive.
 
 ## Security
 
