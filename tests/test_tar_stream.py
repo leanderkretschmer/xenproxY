@@ -129,6 +129,35 @@ def expect_error(label, data, needle):
         print(f"  {'ok  ' if ok else 'FAIL'} {label:<32} {str(exc)[:56]}")
         return ok
 
+def stream_with_payload(payload):
+    """A PAX-sized entry whose bytes are actually there, to read back."""
+    rec = pax_record("size", len(payload)) + pax_record(
+        "path", "backup/virtual-machine.img")
+    out = ustar_header("backup/index.yaml", 11) + pad(b"name: haos\n")
+    out += ustar_header("PaxHeaders/0/vm", len(rec), b"x") + pad(rec)
+    out += ustar_header("placeholder", 0) + pad(payload)
+    return out
+
+
+def check_payload(label, payload):
+    data = stream_with_payload(payload)
+    m = TarMember(FakeProc(data), "virtual-machine.img")
+    buf = bytearray(4096)
+    view = memoryview(buf)
+    got = bytearray()
+    while True:
+        n = m.readinto(view)
+        if not n:
+            break
+        got += view[:n]
+    over = m.readinto(memoryview(bytearray(1)))
+    m.close()
+    ok = bytes(got) == payload and m.size == len(payload) and not over
+    print(f"  {'ok  ' if ok else 'FAIL'} {label:<32} read {len(got):>15,} "
+          f"bytes, stops at the end")
+    return ok
+
+
 results = [
     check("small, plain octal", stream_small(SMALL), SMALL),
     check("large, PAX record", stream_pax(BIG), BIG),
@@ -138,6 +167,7 @@ results = [
     expect_error("a container, not a VM", stream_missing(), "contains no"),
     expect_error("implausible size",
                  stream_gnu(1 << 50), "ceiling"),
+    check_payload("payload read back whole", bytes(range(256)) * 37),
 ]
 print("\nall good" if all(results) else "\nFAILURES")
 sys.exit(0 if all(results) else 1)
