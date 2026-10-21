@@ -239,13 +239,21 @@ into an upper and a lower half, so two stacked pixels fit in one and come out
 square. Colours are the logo's own, with anything too dark to see on a dark
 terminal lifted until it is.
 
-The wordmark itself is a FIGlet face rendered at build time and shipped as
-text, so the runtime carries no font file: the wide one is `X992`, the
-compact one `ANSI Shadow`, both painted as a gradient from `primary` to
-`accent`. The wide face comes with loose accents and apostrophes that read
-as grit at terminal size rather than as part of a letter; `--drop` takes
-them out, which leaves the shape and the hand-drawn character but about a
-fifth fewer marks on the screen.
+The name above the interface is the same drawing at every size rather
+than a different face for narrow terminals: it is shipped at five widths
+and the largest that fits is used, with the mark beside it taking the
+largest variant no taller than the name. Narrowing the terminal shrinks
+the pair instead of swapping it for something else.
+
+It ships as coverage only - how much of each cell the letter fills - so
+the colour is decided when it is drawn and follows the theme, a gradient
+from `primary` to `accent`.
+
+A cell that is one colour top and bottom is painted as a coloured
+background rather than a block glyph. A background fills the cell whatever
+the font does; a block that falls a pixel short of the cell edge lets the
+terminal show through, and a column of those reads as stripes across the
+mark.
 
 Themes, defaults, the mouse switch, the banner and the update check live under
 Settings — `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and
@@ -388,16 +396,19 @@ drift away from what the tool draws:
 ```sh
 python3 tools/make_screenshots.py            # -> docs/screens/*.svg
 python3 tools/img2art.py docs/logos/proxmox.webp proxmox
-python3 tools/figlet2art.py tools/ANSI-Shadow.flf xenproxY wordmark
-python3 tools/figlet2art.py tools/X992.flf xenproxY wordmark-full --drop "°‘‚¨ª*~^'"
+python3 tools/img2art.py docs/logos/wordmark.png wordmark \
+    --widths 140,104,80,60,44 --colours 6 --mask
+python3 tools/img2art.py docs/logos/xenproxy-mark.png xenproxy --widths 36,24,16,12
 ```
 
 `tools/ansi2svg.py` turns the renderer's ANSI output into SVG; box-drawing and
 block characters are emitted as geometry rather than glyphs, so borders connect
-and the marks have no seams. `tools/img2art.py` samples a logo into the colour
-cell format under `xenproxy/art/`, and `tools/figlet2art.py` renders the
-wordmark from a FIGlet font — both at build time, so the runtime needs neither
-an image library nor a font file.
+and the marks have no seams. `tools/img2art.py` samples an image into the
+colour cell format under `xenproxy/art/` — at build time, so the runtime
+needs no image library. It scales with premultiplied alpha, because a fully
+transparent pixel still carries a colour and resampling would otherwise mix
+that into the rim of every shape, which is where a pale halo around a logo
+comes from.
 
 ## Licence
 

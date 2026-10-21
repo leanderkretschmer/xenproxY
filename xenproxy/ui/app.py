@@ -567,8 +567,8 @@ class App:
             # not harder to read for being wide, and the wide face is the
             # one worth showing when there is room for it.
             room = rows - 17
-            if room >= 6:
-                banner = logo.wordmark(th, max(full, cols), min(room, 12))
+            if room >= 4:
+                banner = logo.banner(th, max(full, cols), min(room, 14))
         if banner:
             banner = banner + [""]
         # the banner is already centred across the whole terminal, so it

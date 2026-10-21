@@ -14,20 +14,20 @@ from __future__ import annotations
 import os
 
 from ..theme import BOLD, RESET, Theme, _hex_rgb, _rgb_to_256
+from .term import pad, vlen
 
 ART_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "art")
 
 UPPER = "▀"
 LOWER = "▄"
-FULL = "█"
 ASCII_SHADES = " .:-=+*#%@"
 DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 # widest first - the caller takes the first one that fits
-VARIANTS = (36, 24, 16)
+VARIANTS = (36, 24, 16, 12)
 NAMES = {"xen": "xcp-ng", "xcp-ng": "xcp-ng", "incus": "incus",
-         "proxmox": "proxmox"}
+         "proxmox": "proxmox", "xenproxy": "xenproxy"}
 
 # A logo's black sits on a dark terminal and disappears. Anything below
 # this luminance is lifted until it can be seen; a colour with no hue left
@@ -141,6 +141,11 @@ def _render(name: str, width: int, theme_name: str, depth: int, uni: bool,
         i = DIGITS.find(ch)
         return colours[i] if 0 <= i < len(colours) else None
 
+    return _cells(grid, cols, at, th, uni, depth, centre)
+
+
+def _cells(grid, cols, at, th, uni, depth, centre):
+    """Fold pairs of pixel rows into half-block cells."""
     out = []
     for cy in range(0, len(grid), 2):
         line = []
@@ -155,7 +160,12 @@ def _render(name: str, width: int, theme_name: str, depth: int, uni: bool,
             elif top is None:
                 line.append(_fg(bottom, th) + LOWER + RESET)
             elif top == bottom:
-                line.append(_fg(top, th) + FULL + RESET)
+                # A background fill covers the cell whatever the font does
+                # with its glyphs. Painting U+2588 in the foreground relies
+                # on the block reaching the cell edge, and where it falls
+                # short the terminal shows through as a line between rows -
+                # which is what striped the marks.
+                line.append(_bg(top, th) + " " + RESET)
             else:
                 line.append(_fg(top, th) + _bg(bottom, th) + UPPER + RESET)
         out.append("".join(line))
@@ -174,33 +184,19 @@ def _ascii_cell(top, bottom) -> str:
                             int(lum * len(ASCII_SHADES)))]
 
 
-# -- the name ---------------------------------------------------------
-WORDMARKS = ("wordmark-full", "wordmark")
-_text: dict = {}
-
-
-def _text_art(name: str) -> list[str]:
-    if name not in _text:
-        try:
-            with open(os.path.join(ART_DIR, f"{name}.txt"), encoding="utf-8") as fh:
-                rows = [l.rstrip("\n") for l in fh]
-        except OSError:
-            rows = []
-        while rows and not rows[-1].strip():
-            rows.pop()
-        _text[name] = rows
-    return _text[name]
+# -- the name --------------------------------------------------------
+# The same drawing at every size, so narrowing the terminal shrinks the
+# wordmark instead of swapping it for a different one. Shipped as coverage
+# only - the colour is decided here, from the theme.
+WORDMARK_WIDTHS = (140, 104, 80, 60, 44)
 
 
 def wordmark_size(width: int, height: int) -> tuple[int, int]:
     """(columns, rows) of the largest wordmark that fits, or (0, 0)."""
-    for name in WORDMARKS:
-        rows = _text_art(name)
-        if not rows:
-            continue
-        w = max(len(r) for r in rows)
-        if w <= width and len(rows) <= height:
-            return w, len(rows)
+    for w in WORDMARK_WIDTHS:
+        gw, gh = size("wordmark", w)
+        if gw and gw <= width and gh <= height:
+            return gw, gh
     return 0, 0
 
 
@@ -208,11 +204,10 @@ def wordmark(th: Theme, width: int, height: int, *,
              centre: bool = True) -> list[str]:
     """The name, painted as a gradient from primary to accent.
 
-    A flat colour on six rows of block letters looks like a wall; the
-    gradient gives it a direction without introducing a colour that is not
-    already in the theme.
+    A flat colour over a wide face looks like a wall; the gradient gives it
+    a direction without introducing a colour the theme does not have.
     """
-    key = ("wordmark", th.name, th.depth, th.uni, width, height, centre)
+    key = ("word", th.name, th.depth, th.uni, width, height, centre)
     hit = _rows.get(key)
     if hit is not None:
         return hit
@@ -224,36 +219,102 @@ def wordmark(th: Theme, width: int, height: int, *,
 
 
 def _wordmark(th: Theme, width: int, height: int, centre: bool) -> list[str]:
-    chosen = ""
-    for name in WORDMARKS:
-        rows = _text_art(name)
-        if rows and max(len(r) for r in rows) <= width and len(rows) <= height:
-            chosen = name
+    chosen = 0
+    for w in WORDMARK_WIDTHS:
+        gw, gh = size("wordmark", w)
+        if gw and gw <= width and gh <= height:
+            chosen = w
             break
     if not chosen:
         return []
-    rows = _text_art(chosen)
-    cols = max(len(r) for r in rows)
-    pad = " " * max(0, (width - cols) // 2) if centre else ""
-    if th.depth < 24:
-        return [pad + th.paint(r, "primary", bold=True) for r in rows]
+    art = _load("wordmark", chosen)
+    if not art:
+        return []
+    palette, grid = art
+    cols = max(len(r) for r in grid)
     a = _hex_rgb(th.tokens.get("primary", "#7aa2f7"))
     b = _hex_rgb(th.tokens.get("accent", "#bb9af7"))
+    # the shipped palette is a grey ramp: how much of the cell the letter
+    # covers, which keeps the edges from looking chopped
+    cover = [max(c) / 255.0 for c in palette]
     steps = [tuple(int(a[i] + (b[i] - a[i]) * (x / max(1, cols - 1)))
                    for i in range(3)) for x in range(cols)]
-    out = []
-    for row in rows:
-        # bold matters here: the wide face is drawn in sparse punctuation,
-        # and at one pixel a stroke it disappears into the background
-        line, last = [BOLD], None
-        for x, ch in enumerate(row):
-            if ch == " ":
-                line.append(" ")
-                continue
-            col = steps[min(x, cols - 1)]
-            if col != last:
-                line.append(_fg(col, th))
-                last = col
-            line.append(ch)
-        out.append(pad + "".join(line) + RESET)
+
+    def at(y: int, x: int):
+        if y >= len(grid):
+            return None
+        row = grid[y]
+        ch = row[x] if x < len(row) else "."
+        if ch == ".":
+            return None
+        i = DIGITS.find(ch)
+        if not 0 <= i < len(cover):
+            return None
+        f = cover[i]
+        return tuple(int(c * f) for c in steps[min(x, cols - 1)])
+
+    return _cells(grid, cols, at, th, th.uni, th.depth,
+                  width if centre else 0)
+
+
+# -- the two together -------------------------------------------------
+MARK_GAP = 3
+
+
+def banner(th: Theme, width: int, height: int) -> list[str]:
+    """The mark beside the name, as one centred block.
+
+    The name decides the size - it is the part that has to be read - and
+    the mark takes the largest variant that is no taller, so the pair
+    keeps its proportions whatever the terminal gives them.
+    """
+    key = ("banner", th.name, th.depth, th.uni, width, height)
+    hit = _rows.get(key)
+    if hit is not None:
+        return hit
+    out = _banner(th, width, height)
+    if len(_rows) > 64:
+        _rows.clear()
+    _rows[key] = out
     return out
+
+
+def _banner(th: Theme, width: int, height: int) -> list[str]:
+    # Try the pair at each size before giving up on the mark: a step
+    # smaller with both of them beats the name on its own.
+    pick = None
+    fallback = 0
+    for w in WORDMARK_WIDTHS:
+        ww, wh = size("wordmark", w)
+        if not ww or ww > width or wh > height:
+            continue
+        fallback = fallback or ww
+        for v in VARIANTS:
+            mw, mh = size("xenproxy", v)
+            if mw and mh <= wh and mw + MARK_GAP + ww <= width:
+                pick = (ww, mw, v)
+                break
+        if pick:
+            break
+    if not pick and not fallback:
+        return []
+    if not pick:
+        word = wordmark(th, fallback, height, centre=False)
+        return [pad("", max(0, (width - fallback) // 2)) + l for l in word]
+
+    word_cols, mw, variant = pick
+    # ask for exactly that size, or the largest one would come back again
+    word = wordmark(th, word_cols, height, centre=False)
+    if not word:
+        return []
+    ww, wh = vlen(word[0]), len(word)
+    mark = render("xenproxy", th, variant)
+
+    # sit the shorter of the two in the middle of the taller
+    top = (wh - len(mark)) // 2
+    rows = []
+    left = pad("", max(0, (width - (mw + MARK_GAP + ww)) // 2))
+    for i in range(wh):
+        m = mark[i - top] if 0 <= i - top < len(mark) else ""
+        rows.append(left + pad(m, mw) + " " * MARK_GAP + word[i])
+    return rows
