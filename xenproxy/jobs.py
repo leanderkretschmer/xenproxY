@@ -123,6 +123,7 @@ class Job:
             with open(tmp, "w", encoding="utf-8") as fh:
                 json.dump(self.to_dict(), fh, indent=1)
             os.replace(tmp, os.path.join(JOB_DIR, f"{self.id}.json"))
+            forget_job_cache()
         except OSError:
             pass
 
@@ -139,7 +140,33 @@ class Job:
         }
 
 
+_LIST_CACHE: tuple = (0.0, 0, [])
+_LIST_TTL = 1.0
+
+
 def load_jobs(limit: int = 50) -> list[dict]:
+    """The recorded jobs, re-read at most once a second.
+
+    The jobs screen asks for this on every redraw, and the answer only
+    changes when a migration writes its record.
+    """
+    global _LIST_CACHE
+    import time as _t
+    now = _t.monotonic()
+    when, cached_limit, rows = _LIST_CACHE
+    if rows and cached_limit >= limit and now - when < _LIST_TTL:
+        return rows[:limit]
+    out = _read_jobs(limit)
+    _LIST_CACHE = (now, limit, out)
+    return out
+
+
+def forget_job_cache() -> None:
+    global _LIST_CACHE
+    _LIST_CACHE = (0.0, 0, [])
+
+
+def _read_jobs(limit: int = 50) -> list[dict]:
     out = []
     try:
         names = sorted(os.listdir(JOB_DIR), reverse=True)

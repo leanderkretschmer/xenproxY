@@ -157,6 +157,11 @@ BOX = {
 
 # Shading blocks become solid rectangles so progress bars read as one bar.
 BLOCKS = {"\u2588": 1.0, "\u2593": 0.75, "\u2592": 0.5, "\u2591": 0.25}
+# Half blocks carry two colours in one cell - the glyph's top half is the
+# foreground, the bottom half whatever the background rect already painted.
+# Drawn as geometry rather than as a glyph, because a font's half block
+# rarely fills the cell exactly and the gaps show up as a grid.
+HALVES = {"\u2580": 0.0, "\u2584": 0.5}
 
 
 def box_path(ch: str, x: float, y: float, cw: float, lh: float) -> str:
@@ -241,7 +246,8 @@ def render(lines: list[str], *, title: str = "", cols: int | None = None,
             if st.bg:
                 rw = sum(_cw(c) for c in text) * cw
                 out.append(f'<rect x="{x:.1f}" y="{top + row * lh:.1f}" '
-                           f'width="{rw:.2f}" height="{lh:.1f}" fill="{st.bg}"/>')
+                           f'width="{rw:.2f}" height="{lh:.1f}" '
+                           f'fill="{st.bg}" shape-rendering="crispEdges"/>')
             if not text.strip():
                 continue
             colour = st.fg or fg
@@ -273,7 +279,22 @@ def render(lines: list[str], *, title: str = "", cols: int | None = None,
                         f'<rect x="{PAD_X + c * cw:.2f}" '
                         f'y="{top + row * lh:.2f}" '
                         f'width="{run_len * cw:.2f}" height="{lh:.2f}" '
-                        f'fill="{colour}" opacity="{op}"/>')
+                        f'fill="{colour}" opacity="{op}" '
+                        f'shape-rendering="crispEdges"/>')
+                    c += run_len
+                    i = j
+                elif ch in HALVES:
+                    flush()
+                    off = HALVES[ch]
+                    j = i
+                    while j < len(chars) and chars[j] == ch:
+                        j += 1
+                    run_len = j - i
+                    out.append(
+                        f'<rect x="{PAD_X + c * cw:.2f}" '
+                        f'y="{top + row * lh + lh * off:.2f}" '
+                        f'width="{run_len * cw:.2f}" height="{lh / 2:.2f}" '
+                        f'fill="{colour}" shape-rendering="crispEdges"/>')
                     c += run_len
                     i = j
                 elif ch in BOX:

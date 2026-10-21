@@ -8,7 +8,7 @@
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - migration wizard</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
 <text x="96.0" y="46.9" fill="#565f89" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> ▸ xen-node-1</text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.3.0 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="171.60" lengthAdjust="spacing" font-weight="600"> Migrate minecraft-01 </text>
 <text x="735.6" y="81.7" fill="#565f89" xml:space="preserve" textLength="78.00" lengthAdjust="spacing"> step 1/6 </text>
@@ -19,11 +19,11 @@
 <text x="454.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="62.40" lengthAdjust="spacing">Hardware</text>
 <text x="556.2" y="99.2" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">Options</text>
 <text x="649.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="46.80" lengthAdjust="spacing">Review</text>
-<rect x="25.8" y="103.7" width="140.40" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="103.7" width="140.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="116.6" fill="#c0caf5" xml:space="preserve" textLength="140.40" lengthAdjust="spacing"> ❯ 2 Guests       </text>
 <text x="25.8" y="134.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   3 Jobs         </text>
 <text x="189.6" y="134.0" fill="#7aa2f7" xml:space="preserve" textLength="202.80" lengthAdjust="spacing" font-weight="600">Copy mode                 </text>
-<rect x="392.4" y="121.1" width="70.20" height="17.4" fill="#7aa2f7"/>
+<rect x="392.4" y="121.1" width="70.20" height="17.4" fill="#7aa2f7" shape-rendering="crispEdges"/>
 <text x="392.4" y="134.0" fill="#1f2335" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Offline </text>
 <text x="462.6" y="134.0" fill="#565f89" xml:space="preserve" textLength="78.00" lengthAdjust="spacing"> Snapshot </text>
 <text x="540.6" y="134.0" fill="#565f89" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Live </text>
@@ -31,12 +31,12 @@
 <text x="392.4" y="151.4" fill="#565f89" xml:space="preserve" textLength="351.00" lengthAdjust="spacing">Shut the guest down first - fully consistent,</text>
 <text x="392.4" y="168.8" fill="#565f89" xml:space="preserve" textLength="163.80" lengthAdjust="spacing">downtime for the copy</text>
 <text x="189.6" y="186.3" fill="#565f89" xml:space="preserve" textLength="202.80" lengthAdjust="spacing">Restart source afterwards </text>
-<rect x="392.4" y="173.4" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="392.4" y="173.4" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="392.4" y="186.3" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ○ off </text>
 <text x="189.6" y="221.1" fill="#7dcfff" xml:space="preserve" textLength="179.40" lengthAdjust="spacing">  ←→ or click to choose</text>
-<rect x="25.8" y="504.3" width="101.40" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="504.3" width="101.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> Cancel  esc </text>
-<rect x="135.0" y="504.3" width="70.20" height="17.4" fill="#1f2335"/>
+<rect x="135.0" y="504.3" width="70.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="135.0" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Next  ⏎ </text>
 <text x="25.8" y="552.1" fill="#bb9af7" xml:space="preserve" textLength="15.60" lengthAdjust="spacing" font-weight="600">↑↓</text>
 <text x="49.2" y="552.1" fill="#565f89" xml:space="preserve" textLength="39.00" lengthAdjust="spacing">field</text>

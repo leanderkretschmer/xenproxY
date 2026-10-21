@@ -58,6 +58,7 @@ curl -fsSL "$URL" -o src.tar.gz || die "download failed: $URL"
 mkdir -p src && tar -xzf src.tar.gz -C src --strip-components=1
 [ -d src/xenproxy ] || die "the archive carries no xenproxy package"
 [ -f src/xenproxy/cli.py ] || die "the archive looks incomplete"
+[ -d src/xenproxy/art ] || die "the archive carries no brand marks"
 
 VERSION=$(sed -n 's/^__version__ *= *"\([^"]*\)".*/\1/p' src/xenproxy/__init__.py | head -1)
 OLD=""

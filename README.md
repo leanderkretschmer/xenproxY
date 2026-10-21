@@ -178,11 +178,36 @@ are handled when *adapt guest* is on:
 It also warns when `/etc/fstab` names devices directly or the initramfs
 carries no virtio modules.
 
+A panel with room to spare carries the mark of whatever it is about — the
+source server's own, or Proxmox where there is nothing configured yet. They
+are shaded block art folded onto half-height cells, so one row of the
+terminal carries two of the drawing and the proportions come out right; the
+shading follows the theme rather than a fixed brand colour. Without
+block glyphs or without colour they fall back to shaded ASCII, and on a
+terminal too short for them they are simply not drawn: decoration never
+pushes information off the screen.
+
 Themes, defaults, the mouse switch and the update check live under Settings —
 `tokyo-night`, `dracula`, `nord`, `gruvbox`, `default` and `high-contrast`,
 each with rounded, single, double or plain ASCII borders.
 
 ![Settings](docs/screens/settings.svg)
+
+## Speed
+
+The interface redraws many times a second, so nothing in a render path is
+allowed to be expensive. Two things were: `pveversion` takes about 1.4
+seconds to print one line, and `pvesm status` about 1.3 — both were being
+run on every single frame of the Settings screen, which made it redraw
+roughly once a second. They are answered from a cache now (the node and its
+version cannot change under a running process; free space is re-read every
+twenty seconds and whenever a disk is allocated), the job list is re-read at
+most once a second instead of per frame, and colour codes and character
+widths are memoised.
+
+A Settings frame went from **1430 ms to 2.8 ms** on a live node. The
+interface also stops repainting on a timer when nothing is animating, so an
+idle session costs nothing.
 
 ## Command line
 

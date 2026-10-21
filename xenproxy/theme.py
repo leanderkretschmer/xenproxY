@@ -142,8 +142,24 @@ class Theme:
         if border not in BORDERS or (border != "ascii" and not self.uni):
             border = border if self.uni else "ascii"
         self.border_chars = BORDERS.get(border, BORDERS["rounded"])
+        self._fg_cache: dict = {}
+        self._bg_cache: dict = {}
 
     def fg(self, token: str) -> str:
+        # called a few thousand times per frame; the answer only depends on
+        # the token and the colour depth, both fixed for this theme
+        hit = self._fg_cache.get(token)
+        if hit is None:
+            hit = self._fg_cache[token] = self._fg(token)
+        return hit
+
+    def bg(self, token: str) -> str:
+        hit = self._bg_cache.get(token)
+        if hit is None:
+            hit = self._bg_cache[token] = self._bg(token)
+        return hit
+
+    def _fg(self, token: str) -> str:
         if self.depth == 0:
             return ""
         h = self.tokens.get(token, token)
@@ -155,7 +171,7 @@ class Theme:
         i = _rgb_to_16(r, g, b)
         return f"\x1b[{30 + i}m" if i < 8 else f"\x1b[{90 + i - 8}m"
 
-    def bg(self, token: str) -> str:
+    def _bg(self, token: str) -> str:
         if self.depth == 0:
             return ""
         h = self.tokens.get(token, token)

@@ -7,21 +7,68 @@
 <circle cx="52" cy="17" r="5.5" fill="#9ece6a"/>
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - first run</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.3.0 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="70.20" lengthAdjust="spacing" font-weight="600"> Servers </text>
-<rect x="25.8" y="86.3" width="140.40" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="86.3" width="140.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="99.2" fill="#c0caf5" xml:space="preserve" textLength="140.40" lengthAdjust="spacing"> ❯ 1 Servers      </text>
 <text x="25.8" y="116.6" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   2 Guests       </text>
-<text x="189.6" y="116.6" fill="#565f89" xml:space="preserve" textLength="616.20" lengthAdjust="spacing">No Xen or Incus server configured yet. Use 'Add server' below - xenproxY checks</text>
+<rect x="392.40" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="400.20" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="408.00" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="415.80" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="423.60" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="431.40" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="439.20" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="447.00" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="532.80" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="540.60" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="548.40" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="556.20" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="564.00" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="571.80" y="103.68" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="579.60" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="587.40" y="112.39" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
 <text x="25.8" y="134.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   3 Jobs         </text>
-<text x="189.6" y="134.0" fill="#565f89" xml:space="preserve" textLength="514.80" lengthAdjust="spacing">the connection and pins the certificate before it stores anything.</text>
+<rect x="345.60" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="353.40" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="361.20" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="369.00" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="376.80" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="384.60" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="392.40" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="408.00" y="121.10" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="415.80" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="423.60" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="431.40" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="439.20" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="447.00" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="454.80" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="462.60" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="470.40" y="129.81" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="509.40" y="129.81" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="517.20" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="525.00" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="532.80" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="540.60" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="548.40" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="556.20" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="564.00" y="121.10" width="7.80" height="17.42" fill="#e0af68" opacity="1.0" shape-rendering="crispEdges"/>
+<rect x="571.80" y="121.10" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="579.60" y="121.10" width="7.80" height="8.71" fill="#e0af68" shape-rendering="crispEdges"/>
+<rect x="587.40" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="595.20" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="603.00" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="610.80" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="618.60" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="626.40" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
+<rect x="634.20" y="129.81" width="7.80" height="8.71" fill="#7b6039" shape-rendering="crispEdges"/>
 <text x="25.8" y="151.4" fill="#565f89" xml:space="preserve" textLength="109.20" lengthAdjust="spacing">   4 Settings </text>
 <text x="150.6" y="151.4" fill="#7aa2f7" xml:space="preserve" textLength="148.20" lengthAdjust="spacing" font-weight="600"> Add source server </text>
 <text x="142.8" y="168.8" fill="#7aa2f7" xml:space="preserve" textLength="156.00" lengthAdjust="spacing" font-weight="600">Welcome to xenproxY.</text>
 <text x="142.8" y="186.3" fill="#565f89" xml:space="preserve" textLength="429.00" lengthAdjust="spacing">Add the XenServer/XCP-ng host you want to migrate from.</text>
 <text x="142.8" y="221.1" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">Source            </text>
-<rect x="283.2" y="208.2" width="156.00" height="17.4" fill="#bb9af7"/>
+<rect x="283.2" y="208.2" width="156.00" height="17.4" fill="#bb9af7" shape-rendering="crispEdges"/>
 <text x="283.2" y="221.1" fill="#1f2335" xml:space="preserve" textLength="156.00" lengthAdjust="spacing"> XenServer / XCP-ng </text>
 <text x="439.2" y="221.1" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> Incus </text>
 <text x="142.8" y="238.5" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">Name              </text>
@@ -31,29 +78,30 @@
 <text x="142.8" y="273.4" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">User              </text>
 <text x="298.8" y="273.4" fill="#c0caf5" xml:space="preserve" textLength="31.20" lengthAdjust="spacing">root</text>
 <text x="142.8" y="290.8" fill="#7aa2f7" xml:space="preserve" textLength="140.40" lengthAdjust="spacing" font-weight="600">Password          </text>
-<rect x="298.8" y="277.9" width="7.80" height="17.4" fill="#7aa2f7"/>
+<rect x="298.8" y="277.9" width="7.80" height="17.4" fill="#7aa2f7" shape-rendering="crispEdges"/>
 <text x="298.8" y="290.8" fill="#1f2335" xml:space="preserve" textLength="7.80" lengthAdjust="spacing">*</text>
 <text x="306.6" y="290.8" fill="#c0caf5" xml:space="preserve" textLength="85.80" lengthAdjust="spacing">***********</text>
 <text x="283.2" y="308.2" fill="#565f89" xml:space="preserve" textLength="358.80" lengthAdjust="spacing">Needed for the XAPI disk export, even when SSH</text>
 <text x="283.2" y="325.6" fill="#565f89" xml:space="preserve" textLength="85.80" lengthAdjust="spacing">uses a key.</text>
+<text x="712.2" y="325.6" fill="#565f89" xml:space="preserve" textLength="93.60" lengthAdjust="spacing">proxY checks</text>
 <text x="142.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">SSH key           </text>
 <text x="298.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="249.60" lengthAdjust="spacing">optional - path to a private key</text>
 <text x="142.8" y="360.5" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">SSH port          </text>
 <text x="298.8" y="360.5" fill="#c0caf5" xml:space="preserve" textLength="15.60" lengthAdjust="spacing">22</text>
 <text x="142.8" y="377.9" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">Verify TLS        </text>
-<rect x="283.2" y="365.0" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="283.2" y="365.0" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="283.2" y="377.9" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ○ off </text>
 <text x="142.8" y="395.3" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">Allow unverified  </text>
-<rect x="283.2" y="382.4" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="283.2" y="382.4" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="283.2" y="395.3" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ○ off </text>
 <text x="142.8" y="430.1" fill="#7dcfff" xml:space="preserve" textLength="265.20" lengthAdjust="spacing">type to edit, ⇥ for the next field</text>
-<rect x="142.8" y="452.1" width="101.40" height="17.4" fill="#1f2335"/>
+<rect x="142.8" y="452.1" width="101.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="142.8" y="465.0" fill="#c0caf5" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> Cancel  esc </text>
-<rect x="252.0" y="452.1" width="195.00" height="17.4" fill="#1f2335"/>
+<rect x="252.0" y="452.1" width="195.00" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="252.0" y="465.0" fill="#c0caf5" xml:space="preserve" textLength="195.00" lengthAdjust="spacing"> Test connection  ctrl-t </text>
-<rect x="454.8" y="452.1" width="70.20" height="17.4" fill="#1f2335"/>
+<rect x="454.8" y="452.1" width="70.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="454.8" y="465.0" fill="#c0caf5" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Save  ⏎ </text>
-<rect x="25.8" y="504.3" width="117.00" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="504.3" width="117.00" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="117.00" lengthAdjust="spacing"> Add server  a </text>
 <text x="150.6" y="517.2" fill="#3b4261" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Open  ⏎ </text>
 <text x="228.6" y="517.2" fill="#3b4261" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Test  t </text>

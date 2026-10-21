@@ -8,7 +8,7 @@
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - guests on Incus</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
 <text x="96.0" y="46.9" fill="#565f89" xml:space="preserve" textLength="85.80" lengthAdjust="spacing"> ▸ incus-01</text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.3.0 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="62.40" lengthAdjust="spacing" font-weight="600"> Guests </text>
 <text x="439.2" y="81.7" fill="#565f89" xml:space="preserve" textLength="23.40" lengthAdjust="spacing"> 5 </text>
@@ -16,11 +16,11 @@
 <text x="25.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   1 Servers      </text>
 <text x="189.6" y="99.2" fill="#c0caf5" xml:space="preserve" textLength="265.20" lengthAdjust="spacing">  build-runner           run 4G 4c</text>
 <text x="493.8" y="99.2" fill="#c0caf5" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600">db-replica</text>
-<rect x="25.8" y="103.7" width="140.40" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="103.7" width="140.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="116.6" fill="#c0caf5" xml:space="preserve" textLength="140.40" lengthAdjust="spacing"> ❯ 2 Guests       </text>
-<rect x="189.6" y="103.7" width="265.20" height="17.4" fill="#1f2335"/>
+<rect x="189.6" y="103.7" width="265.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="189.6" y="116.6" fill="#7aa2f7" xml:space="preserve" textLength="265.20" lengthAdjust="spacing">❯ db-replica             run 8G 4c</text>
-<rect x="493.8" y="103.7" width="70.20" height="17.4" fill="#9ece6a"/>
+<rect x="493.8" y="103.7" width="70.20" height="17.4" fill="#9ece6a" shape-rendering="crispEdges"/>
 <text x="493.8" y="116.6" fill="#1f2335" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> running </text>
 <text x="25.8" y="134.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   3 Jobs         </text>
 <text x="189.6" y="134.0" fill="#c0caf5" xml:space="preserve" textLength="265.20" lengthAdjust="spacing">  gitea                  run 2G 2c</text>
@@ -42,11 +42,11 @@
 <text x="493.8" y="325.6" fill="#c0caf5" xml:space="preserve" textLength="273.00" lengthAdjust="spacing"> eth0  10:66:6a:22:d8:17  VLAN 1051</text>
 <text x="493.8" y="343.0" fill="#565f89" xml:space="preserve" textLength="46.80" lengthAdjust="spacing">   br0</text>
 <text x="493.8" y="377.9" fill="#e0af68" xml:space="preserve" textLength="226.20" lengthAdjust="spacing">⚠ 1 snapshot(s) on the source</text>
-<rect x="25.8" y="504.3" width="93.60" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="504.3" width="93.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="93.60" lengthAdjust="spacing"> Migrate  m </text>
-<rect x="127.2" y="504.3" width="85.80" height="17.4" fill="#1f2335"/>
+<rect x="127.2" y="504.3" width="85.80" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="127.2" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="85.80" lengthAdjust="spacing"> Reload  r </text>
-<rect x="220.8" y="504.3" width="109.20" height="17.4" fill="#1f2335"/>
+<rect x="220.8" y="504.3" width="109.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="220.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="109.20" lengthAdjust="spacing"> Servers  esc </text>
 <text x="25.8" y="552.1" fill="#bb9af7" xml:space="preserve" textLength="15.60" lengthAdjust="spacing" font-weight="600">↑↓</text>
 <text x="49.2" y="552.1" fill="#565f89" xml:space="preserve" textLength="46.80" lengthAdjust="spacing">select</text>

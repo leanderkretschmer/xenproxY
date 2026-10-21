@@ -25,6 +25,7 @@ from ..theme import RESET, Theme
 from ..xen import XenHost
 from . import render as R
 from .hit import HitMap
+from . import logo
 from .term import Mouse, Term, pad, slice_cols, truncate, vlen
 from .widgets import (Button, ButtonBar, Choice, Field, Form, LogView,
                       SelectList, TextField, Toggle)
@@ -44,6 +45,9 @@ RING = {
 }
 
 SIDE_W = 20
+# Each mark gets a token that stays distinct in every theme, rather than a
+# brand hex that would clash with half of them.
+LOGO_TOKEN = {"xen": "info", "incus": "accent", "proxmox": "warning"}
 # Past this the layout stops growing and is centred instead. A list row whose
 # hint sits two hundred columns from its label is not more readable for the
 # space, it is less.
@@ -229,7 +233,7 @@ class App:
                 self.poll()
                 cols, rows = term.size()
                 term.draw(self.compose(cols, rows))
-                ev = term.read_key(timeout=0.15)
+                ev = term.read_key(timeout=self.idle_timeout())
                 self.tick += 1
                 if ev is not None:
                     try:
@@ -240,6 +244,25 @@ class App:
                     except Exception as exc:  # noqa: BLE001
                         self.notify(str(exc), "danger", 6)
         return 0
+
+    def idle_timeout(self) -> float:
+        """How long to wait for input before repainting anyway.
+
+        Only animation needs the clock - a spinner, a progress bar, a toast
+        that has to expire. With none of those on screen the frame cannot
+        change by itself, so waiting longer costs nothing and saves several
+        pointless redraws a second.
+        """
+        if any(j.state == jobmod.RUNNING for j in self.live_jobs):
+            return 0.12
+        if (self.load_task or self.detail_task or self.probe_task
+                or self.update_task):
+            return 0.12
+        if self.overlay and self.overlay.get("testing"):
+            return 0.12
+        if time.time() < self.toast_until:
+            return 0.25
+        return 0.6
 
     def poll(self) -> None:
         self.poll_overlay()
@@ -574,6 +597,22 @@ class App:
     def _hover_for(self, *actions: str):
         return self.hover_arg if self.hover_action in actions else None
 
+    def mark(self, name: str, inner: int, room: int) -> list[str]:
+        """The brand mark, when the panel has room to spare for it.
+
+        Decoration must never push information off a small terminal, so it
+        is only drawn once everything else has been laid out and the space
+        left over is enough.
+        """
+        w, h = logo.size(name)
+        if not h or room < h or inner < w:
+            return []
+        art = logo.render(name, self.th, LOGO_TOKEN.get(name, "primary"),
+                          width=inner)
+        top = 1 if room >= h + 2 else 0
+        bottom = 1 if room >= h + 1 else 0
+        return [""] * top + art + [""] * bottom
+
     # -- screens -----------------------------------------------------
     def screen_servers(self, width: int, height: int, ox: int,
                        oy: int) -> list[str]:
@@ -581,13 +620,14 @@ class App:
         focused = self.focus == "list"
         if not config.servers(self.cfg):
             self.hit.add(ox, oy, width, height, "pane", "list")
-            body = R.wrap("No Xen or Incus server configured yet. Use "
-                          "'Add server' below - xenproxY checks the connection "
-                          "and pins the certificate before it stores anything.",
-                          width - 4)
-            return R.panel(th, [""] + [th.paint(l, "muted") for l in body],
-                           width, title="Servers", focused=focused,
-                           height=height)
+            inner = width - 4
+            body = [th.paint(l, "muted") for l in R.wrap(
+                "No Xen or Incus server configured yet. Use 'Add server' "
+                "below - xenproxY checks the connection and pins the "
+                "certificate before it stores anything.", inner)]
+            mark = self.mark("proxmox", inner, height - 2 - len(body) - 2)
+            return R.panel(th, mark + [""] + body, width, title="Servers",
+                           focused=focused, height=height)
 
         left_w = max(26, int(width * 0.42))
         right_w = width - left_w - 1
@@ -636,7 +676,10 @@ class App:
                 "warning"))
         rows += ["", th.paint("  Open lists the guests on this server.",
                               "muted")]
-        return R.panel(th, rows, width, title="Connection", height=height)
+        mark = self.mark(srv.get("kind", "xen"), inner,
+                         height - 2 - len(rows))
+        return R.panel(th, mark + rows, width, title="Connection",
+                       height=height)
 
     def screen_guests(self, width: int, height: int, ox: int,
                       oy: int) -> list[str]:
@@ -644,9 +687,12 @@ class App:
         focused = self.focus == "list"
         if not self.active_server:
             self.hit.add(ox, oy, width, height, "pane", "list")
-            return R.panel(th, ["", th.paint("  Open a server first - press 1 "
-                                             "or click 'Servers'.", "muted")],
-                           width, title="Guests", height=height)
+            inner = width - 4
+            body = [th.paint("  Open a server first - press 1 or click "
+                             "'Servers'.", "muted")]
+            mark = self.mark("proxmox", inner, height - 2 - len(body) - 2)
+            return R.panel(th, mark + [""] + body, width, title="Guests",
+                           height=height)
         if self.load_task and not self.load_task.done:
             spin = R.spinner_frame(th, self.tick)
             return R.panel(th, ["", f"  {spin} " + th.paint(
@@ -783,6 +829,7 @@ class App:
                 hover=self._hover_for("row"))
         elif not running:
             rows = [th.paint("  no migrations yet", "muted")]
+            rows = self.mark("proxmox", inner, height - 4) + rows
         return R.panel(th, rows, width, title="Jobs", focused=focused,
                        height=height)
 

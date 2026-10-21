@@ -6,6 +6,8 @@ import os
 import re
 import shlex
 import subprocess
+import threading
+import time
 
 QM = "/usr/sbin/qm"
 PVESM = "/usr/sbin/pvesm"
@@ -14,6 +16,36 @@ PVESH = "/usr/bin/pvesh"
 
 class PVEError(RuntimeError):
     pass
+
+
+# Some of these shell out to tools that take over a second - `pveversion`
+# loads the whole PVE API to print one line. The interface redraws many
+# times a second, so anything called from a render path is answered from
+# here instead of from a new process.
+_CACHE: dict = {}
+_LOCK = threading.Lock()
+FOREVER = float("inf")
+
+
+def cached(key: str, ttl: float, produce):
+    now = time.monotonic()
+    with _LOCK:
+        hit = _CACHE.get(key)
+        if hit is not None and now - hit[0] < ttl:
+            return hit[1]
+    value = produce()
+    with _LOCK:
+        _CACHE[key] = (now, value)
+    return value
+
+
+def invalidate(*keys: str) -> None:
+    """Drop cached answers - after anything that changes what they said."""
+    with _LOCK:
+        if not keys:
+            _CACHE.clear()
+        for k in keys:
+            _CACHE.pop(k, None)
 
 
 def run(argv: list[str], *, timeout: int = 120, check: bool = True,
@@ -39,22 +71,38 @@ def is_pve_node() -> bool:
 
 
 def node_name() -> str:
-    try:
-        return run(["hostname"], timeout=10).stdout.strip()
-    except Exception:
-        return "localhost"
+    def _read():
+        try:
+            return run(["hostname"], timeout=10).stdout.strip()
+        except Exception:  # noqa: BLE001
+            return "localhost"
+    return cached("node_name", FOREVER, _read)
 
 
 def version() -> str:
-    try:
-        return run(["/usr/bin/pveversion"], timeout=20).stdout.strip().splitlines()[0]
-    except Exception:
-        return "unknown"
+    def _read():
+        try:
+            return run(["/usr/bin/pveversion"],
+                       timeout=20).stdout.strip().splitlines()[0]
+        except Exception:  # noqa: BLE001
+            return "unknown"
+    # neither the node nor its package version changes under a running
+    # process, so this is read once and kept
+    return cached("version", FOREVER, _read)
 
 
 # -- storage ---------------------------------------------------------
+# Free space does move, but not between two frames of a terminal redraw.
+STORAGE_TTL = 20.0
+
+
 def storages(*, images_only: bool = True) -> list[dict]:
     """Storages usable for VM disks, with free space."""
+    return cached(f"storages:{images_only}", STORAGE_TTL,
+                  lambda: _storages(images_only=images_only))
+
+
+def _storages(*, images_only: bool = True) -> list[dict]:
     out = []
     try:
         cp = run([PVESM, "status"], timeout=60)
@@ -117,6 +165,7 @@ def storage_path(volid: str) -> str:
 
 def alloc_disk(storage: str, vmid: int, name: str, size_bytes: int) -> str:
     size_kb = (size_bytes + 1023) // 1024
+    invalidate("storages:True", "storages:False")   # free space just moved
     cp = run([PVESM, "alloc", storage, str(vmid), name, str(size_kb)], timeout=600)
     m = re.search(r"'([^']+)'", cp.stdout)
     return m.group(1) if m else f"{storage}:{name}"
@@ -128,6 +177,10 @@ def free_disk(volid: str) -> None:
 
 # -- network ---------------------------------------------------------
 def bridges() -> list[dict]:
+    return cached("bridges", STORAGE_TTL, _bridges)
+
+
+def _bridges() -> list[dict]:
     out = []
     vlan_aware = set()
     cur = None

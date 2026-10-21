@@ -7,12 +7,12 @@
 <circle cx="52" cy="17" r="5.5" fill="#9ece6a"/>
 <text x="424" y="21" text-anchor="middle" fill="#565f89" font-size="12.0">xenproxY - settings</text>
 <text x="18.0" y="46.9" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> xenproxY </text>
-<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.2.2 </text>
+<text x="774.6" y="46.9" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing">v0.3.0 </text>
 <text x="33.6" y="81.7" fill="#c0caf5" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> Menu </text>
 <text x="197.4" y="81.7" fill="#7aa2f7" xml:space="preserve" textLength="78.00" lengthAdjust="spacing" font-weight="600"> Settings </text>
 <text x="25.8" y="99.2" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   1 Servers      </text>
 <text x="189.6" y="99.2" fill="#7aa2f7" xml:space="preserve" textLength="148.20" lengthAdjust="spacing" font-weight="600">Theme              </text>
-<rect x="337.8" y="86.3" width="101.40" height="17.4" fill="#7aa2f7"/>
+<rect x="337.8" y="86.3" width="101.40" height="17.4" fill="#7aa2f7" shape-rendering="crispEdges"/>
 <text x="337.8" y="99.2" fill="#1f2335" xml:space="preserve" textLength="101.40" lengthAdjust="spacing"> tokyo-night </text>
 <text x="439.2" y="99.2" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> dracula </text>
 <text x="509.4" y="99.2" fill="#565f89" xml:space="preserve" textLength="46.80" lengthAdjust="spacing"> nord </text>
@@ -21,56 +21,56 @@
 <text x="696.6" y="99.2" fill="#565f89" xml:space="preserve" textLength="117.00" lengthAdjust="spacing"> high-contrast </text>
 <text x="25.8" y="116.6" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   2 Guests       </text>
 <text x="189.6" y="116.6" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Border             </text>
-<rect x="337.8" y="103.7" width="70.20" height="17.4" fill="#bb9af7"/>
+<rect x="337.8" y="103.7" width="70.20" height="17.4" fill="#bb9af7" shape-rendering="crispEdges"/>
 <text x="337.8" y="116.6" fill="#1f2335" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> rounded </text>
 <text x="408.0" y="116.6" fill="#565f89" xml:space="preserve" textLength="62.40" lengthAdjust="spacing"> single </text>
 <text x="470.4" y="116.6" fill="#565f89" xml:space="preserve" textLength="62.40" lengthAdjust="spacing"> double </text>
 <text x="532.8" y="116.6" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ascii </text>
 <text x="25.8" y="134.0" fill="#565f89" xml:space="preserve" textLength="140.40" lengthAdjust="spacing">   3 Jobs         </text>
 <text x="189.6" y="134.0" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Mouse              </text>
-<rect x="337.8" y="121.1" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="337.8" y="121.1" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="337.8" y="134.0" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ✓ on  </text>
-<rect x="25.8" y="138.5" width="140.40" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="138.5" width="140.40" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="151.4" fill="#c0caf5" xml:space="preserve" textLength="140.40" lengthAdjust="spacing"> ❯ 4 Settings     </text>
 <text x="189.6" y="151.4" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Default storage    </text>
-<rect x="337.8" y="138.5" width="85.80" height="17.4" fill="#bb9af7"/>
+<rect x="337.8" y="138.5" width="85.80" height="17.4" fill="#bb9af7" shape-rendering="crispEdges"/>
 <text x="337.8" y="151.4" fill="#1f2335" xml:space="preserve" textLength="85.80" lengthAdjust="spacing"> nvme-pool </text>
 <text x="423.6" y="151.4" fill="#565f89" xml:space="preserve" textLength="85.80" lengthAdjust="spacing"> local-zfs </text>
 <text x="509.4" y="151.4" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> ceph-vm </text>
 <text x="189.6" y="168.8" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Default bridge     </text>
-<rect x="337.8" y="155.9" width="54.60" height="17.4" fill="#bb9af7"/>
+<rect x="337.8" y="155.9" width="54.60" height="17.4" fill="#bb9af7" shape-rendering="crispEdges"/>
 <text x="337.8" y="168.8" fill="#1f2335" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> vmbr0 </text>
 <text x="392.4" y="168.8" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> vmbr1 </text>
 <text x="447.0" y="168.8" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> vmbr9 </text>
 <text x="189.6" y="186.3" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Verify transfers   </text>
-<rect x="337.8" y="173.4" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="337.8" y="173.4" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="337.8" y="186.3" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ✓ on  </text>
 <text x="189.6" y="203.7" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Adapt guests       </text>
-<rect x="337.8" y="190.8" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="337.8" y="190.8" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="337.8" y="203.7" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ✓ on  </text>
 <text x="189.6" y="221.1" fill="#565f89" xml:space="preserve" textLength="148.20" lengthAdjust="spacing">Check for updates  </text>
-<rect x="337.8" y="208.2" width="54.60" height="17.4" fill="#1f2335"/>
+<rect x="337.8" y="208.2" width="54.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="337.8" y="221.1" fill="#c0caf5" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> ○ off </text>
 <text x="189.6" y="255.9" fill="#7dcfff" xml:space="preserve" textLength="179.40" lengthAdjust="spacing">  ←→ or click to choose</text>
 <text x="205.2" y="290.8" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> updates </text>
-<text x="189.6" y="308.2" fill="#9ece6a" xml:space="preserve" textLength="374.40" lengthAdjust="spacing">✓ xenproxY 0.2.2 is the newest published version</text>
+<text x="189.6" y="308.2" fill="#9ece6a" xml:space="preserve" textLength="374.40" lengthAdjust="spacing">✓ xenproxY 0.3.0 is the newest published version</text>
 <text x="189.6" y="343.0" fill="#565f89" xml:space="preserve" textLength="93.60" lengthAdjust="spacing">  curl -fsSL</text>
 <text x="189.6" y="360.5" fill="#565f89" xml:space="preserve" textLength="608.40" lengthAdjust="spacing">  https://raw.githubusercontent.com/leanderkretschmer/xenproxY/main/install.sh</text>
 <text x="189.6" y="377.9" fill="#565f89" xml:space="preserve" textLength="62.40" lengthAdjust="spacing">  | bash</text>
 <text x="205.2" y="412.7" fill="#565f89" xml:space="preserve" textLength="54.60" lengthAdjust="spacing"> about </text>
 <text x="189.6" y="430.1" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Version  </text>
-<text x="259.8" y="430.1" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">0.2.2                                                                   </text>
+<text x="259.8" y="430.1" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">0.3.0                                                                   </text>
 <text x="189.6" y="447.6" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Node     </text>
 <text x="259.8" y="447.6" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">pve-01 - pve-manager/9.2.11                                             </text>
 <text x="189.6" y="465.0" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Config   </text>
 <text x="259.8" y="465.0" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">/etc/xenproxy/config.json                                               </text>
 <text x="189.6" y="482.4" fill="#565f89" xml:space="preserve" textLength="70.20" lengthAdjust="spacing">Jobs     </text>
 <text x="259.8" y="482.4" fill="#c0caf5" xml:space="preserve" textLength="561.60" lengthAdjust="spacing">/var/lib/xenproxy/jobs                                                  </text>
-<rect x="25.8" y="504.3" width="70.20" height="17.4" fill="#1f2335"/>
+<rect x="25.8" y="504.3" width="70.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="25.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="70.20" lengthAdjust="spacing"> Save  s </text>
-<rect x="103.8" y="504.3" width="171.60" height="17.4" fill="#1f2335"/>
+<rect x="103.8" y="504.3" width="171.60" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="103.8" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="171.60" lengthAdjust="spacing"> Check for updates  u </text>
-<rect x="283.2" y="504.3" width="109.20" height="17.4" fill="#1f2335"/>
+<rect x="283.2" y="504.3" width="109.20" height="17.4" fill="#1f2335" shape-rendering="crispEdges"/>
 <text x="283.2" y="517.2" fill="#c0caf5" xml:space="preserve" textLength="109.20" lengthAdjust="spacing"> Reinstall  i </text>
 <text x="25.8" y="552.1" fill="#bb9af7" xml:space="preserve" textLength="15.60" lengthAdjust="spacing" font-weight="600">↑↓</text>
 <text x="49.2" y="552.1" fill="#565f89" xml:space="preserve" textLength="39.00" lengthAdjust="spacing">field</text>

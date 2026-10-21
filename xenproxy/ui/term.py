@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import collections
+import functools
 import os
 import re
 import select
@@ -76,6 +77,7 @@ def _decode_mouse(cb: int, x: int, y: int, release: bool) -> Mouse:
     return Mouse("press", button, x, y)
 
 
+@functools.lru_cache(maxsize=4096)
 def char_width(ch: str) -> int:
     if unicodedata.combining(ch):
         return 0
@@ -83,12 +85,16 @@ def char_width(ch: str) -> int:
 
 
 def strip_ansi(s: str) -> str:
-    return ANSI_RE.sub("", s)
+    # the regex is the expensive part and most strings never need it
+    return ANSI_RE.sub("", s) if "\x1b" in s else s
 
 
 def vlen(s: str) -> int:
     """Visible width of a string, ignoring ANSI sequences."""
-    return sum(char_width(c) for c in strip_ansi(s))
+    plain = strip_ansi(s)
+    if plain.isascii():
+        return len(plain)       # the common case, without a per-character walk
+    return sum(char_width(c) for c in plain)
 
 
 def truncate(s: str, width: int, ellipsis: str = "…") -> str:
